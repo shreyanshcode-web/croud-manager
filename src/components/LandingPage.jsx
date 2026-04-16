@@ -1,5 +1,5 @@
 import React from 'react';
-import { FiArrowRight, FiCloud, FiDatabase, FiMapPinned, FiShield, FiTrendingUp } from 'react-icons/fi';
+import { FiArrowRight, FiCloud, FiDatabase, FiMapPin, FiShield, FiTrendingUp } from 'react-icons/fi';
 import BubbleMenu from './BubbleMenu';
 import ScrollReveal from './ScrollReveal';
 import LiquidEther from './LiquidEther';
