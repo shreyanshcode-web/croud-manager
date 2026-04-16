@@ -56,9 +56,12 @@ export function useUserLocation() {
   }, []);
 
   useEffect(() => {
-    requestLocation();
+    const timerId = window.setTimeout(() => {
+      requestLocation();
+    }, 0);
 
     return () => {
+      window.clearTimeout(timerId);
       if (watcherId.current !== null) {
         navigator.geolocation.clearWatch(watcherId.current);
       }

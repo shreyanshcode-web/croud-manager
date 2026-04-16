@@ -1,0 +1,42 @@
+name: smartvenue-edge-policy
+description: Protect the SmartVenue Cloud Run frontend and API with basic WAF and rate limiting.
+rules:
+  - action: allow
+    priority: 1000
+    description: Allow health checks
+    match:
+      versionedExpr: SRC_IPS_V1
+      config:
+        srcIpRanges:
+          - 35.191.0.0/16
+          - 130.211.0.0/22
+
+  - action: throttle
+    priority: 2000
+    description: Rate limit aggressive clients
+    match:
+      expr:
+        expression: "request.path.matches('/api/.*')"
+    rateLimitOptions:
+      rateLimitThreshold:
+        count: 120
+        intervalSec: 60
+      conformAction: allow
+      exceedAction: deny(429)
+      enforceOnKey: IP
+
+  - action: deny(403)
+    priority: 3000
+    description: Block common exploit payloads
+    match:
+      expr:
+        expression: "evaluatePreconfiguredWaf('xss-v33-stable') || evaluatePreconfiguredWaf('sqli-v33-stable')"
+
+  - action: allow
+    priority: 2147483647
+    description: Default allow
+    match:
+      versionedExpr: SRC_IPS_V1
+      config:
+        srcIpRanges:
+          - "*"

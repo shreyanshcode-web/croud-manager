@@ -149,7 +149,6 @@ function generateEmergencyExits() {
 
 // --- Public Transport ---
 function generateTransport() {
-  const types = ["Bus", "Metro", "Shuttle"];
   const routes = [
     { type: "Metro", line: "Blue Line — Central Station", eta: rand(2, 12), capacity: rand(60, 95), passengers: rand(100, 400), maxPassengers: 450 },
     { type: "Metro", line: "Red Line — North Terminal", eta: rand(5, 18), capacity: rand(40, 90), passengers: rand(80, 350), maxPassengers: 400 },

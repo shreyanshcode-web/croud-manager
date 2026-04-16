@@ -1,33 +1,10 @@
-import React, { useMemo } from 'react';
-import { FiUsers, FiClock, FiMaximize2, FiArrowRight } from 'react-icons/fi';
+import React from 'react';
+import { FiMaximize2, FiArrowRight } from 'react-icons/fi';
+import GlassSurface from './GlassSurface';
 
-export default function GateMonitor({ data }) {
+export default function GateMonitor({ data, intelligence }) {
   const { gates } = data;
-
-  // Analysis based on the latest prompt
-  const analysis = useMemo(() => {
-    const sorted = [...gates].sort((a, b) => b.utilization - a.utilization);
-    const top2 = sorted.slice(0, 2);
-    
-    // Find alternates for each of the top 2
-    const recommendations = top2.map(gate => {
-      // Find a gate that is open and has low utilization
-      const alt = gates.find(g => 
-        g.id !== gate.id && 
-        g.status === 'open' && 
-        g.utilization < 60
-      ) || gates.find(g => g.id !== gate.id && g.status !== 'restricted'); // Fallback
-
-      return {
-        overloaded: gate,
-        alt: alt,
-        push: alt ? `Avoid ${gate.name}. Use ${alt.name} for 5 min entry. Just a 2 min walk right!` : 'Gate busy. Please have tickets ready.',
-        staffing: alt ? `Move 2 staff from ${alt.name} to ${gate.name} to assist scanning.` : `Deploy 2 roaming concierges to ${gate.name}.`
-      };
-    });
-
-    return recommendations;
-  }, [gates]);
+  const analysis = intelligence?.gatePredictions.slice(0, 3) || [];
 
   return (
     <div className="fade-in">
@@ -40,36 +17,51 @@ export default function GateMonitor({ data }) {
 
       {/* AI Task Analysis Section */}
       <div className="dashboard-grid-2">
-        <div className="glass-card" style={{ borderColor: 'var(--accent-blue)', background: 'linear-gradient(to right, rgba(15, 22, 41, 0.9), rgba(59, 130, 246, 0.05))'}}>
-          <div className="glass-card-header">
-            <div className="glass-card-title"><FiMaximize2 /> AI Congestion Analysis</div>
-          </div>
-          
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-            {analysis.map((rec, i) => (
-              <div key={i} style={{ padding: '12px', background: 'rgba(0,0,0,0.2)', borderRadius: '8px', borderLeft: '3px solid var(--accent-red)' }}>
-                <div style={{ fontSize: '14px', fontWeight: 'bold', marginBottom: '8px', color: 'var(--text-primary)' }}>
-                  Target: {rec.overloaded.name} ({rec.overloaded.utilization}%)
-                </div>
-                
-                <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: '8px', fontSize: '13px' }}>
-                  <span style={{color: 'var(--text-muted)'}}>Alternate:</span>
-                  <span style={{color: 'var(--accent-emerald)', fontWeight: 'bold'}}>{rec.alt?.name} ({rec.alt?.utilization}%) <FiArrowRight style={{verticalAlign:'middle'}}/> ~200m walk</span>
+        <GlassSurface
+          borderRadius={18}
+          blur={14}
+          displace={0.8}
+          saturation={1.22}
+          backgroundOpacity={0.1}
+          style={{ minHeight: '100%' }}
+        >
+          <div className="glass-card" style={{ borderColor: 'var(--accent-blue)', background: 'transparent', boxShadow: 'none', width: '100%' }}>
+            <div className="glass-card-header">
+              <div className="glass-card-title"><FiMaximize2 /> AI Congestion Analysis</div>
+            </div>
+            
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              {analysis.map((rec) => (
+                <div key={rec.id} style={{ padding: '12px', background: 'rgba(0,0,0,0.2)', borderRadius: '8px', borderLeft: `3px solid ${rec.score >= 75 ? 'var(--accent-red)' : 'var(--accent-amber)'}` }}>
+                  <div style={{ fontSize: '14px', fontWeight: 'bold', marginBottom: '8px', color: 'var(--text-primary)' }}>
+                    Target: {rec.name} ({rec.score}/100 pressure)
+                  </div>
                   
-                  <span style={{color: 'var(--text-muted)'}}>Auto-SMS:</span>
-                  <span style={{fontStyle: 'italic', color: 'var(--text-primary)'}}>"{rec.push}"</span>
+                  <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: '8px', fontSize: '13px' }}>
+                    <span style={{color: 'var(--text-muted)'}}>Confidence:</span>
+                    <span style={{color: 'var(--accent-cyan)', fontWeight: 'bold'}}>{rec.confidence}%</span>
+
+                    <span style={{color: 'var(--text-muted)'}}>Alternate:</span>
+                    <span style={{color: 'var(--accent-emerald)', fontWeight: 'bold'}}>{rec.recommendedGate} <FiArrowRight style={{verticalAlign:'middle'}}/> lower-load corridor</span>
+                    
+                    <span style={{color: 'var(--text-muted)'}}>Forecast:</span>
+                    <span style={{fontStyle: 'italic', color: 'var(--text-primary)'}}>{rec.predictedWaitMinutes} min projected wait</span>
+                    
+                    <span style={{color: 'var(--text-muted)'}}>Ops Action:</span>
+                    <span style={{color: 'var(--accent-amber)'}}>{rec.action}</span>
+
+                    <span style={{color: 'var(--text-muted)'}}>Why:</span>
+                    <span style={{color: 'var(--text-secondary)'}}>{rec.reason}</span>
+                  </div>
                   
-                  <span style={{color: 'var(--text-muted)'}}>Ops Action:</span>
-                  <span style={{color: 'var(--accent-amber)'}}>{rec.staffing}</span>
+                  <div style={{ marginTop: '10px' }}>
+                    <button className="header-btn" style={{ padding: '4px 10px', fontSize: '11px' }}>Execute Flow Plan</button>
+                  </div>
                 </div>
-                
-                <div style={{ marginTop: '10px' }}>
-                  <button className="header-btn" style={{ padding: '4px 10px', fontSize: '11px' }}>Execute Flow Plan</button>
-                </div>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
-        </div>
+        </GlassSurface>
 
         <div className="glass-card">
           <div className="glass-card-header">

@@ -1,0 +1,93 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "CrowdEvent",
+  "type": "object",
+  "required": [
+    "event_id",
+    "event_timestamp",
+    "venue_id",
+    "gate_metrics",
+    "section_metrics",
+    "parking_metrics",
+    "transport_metrics",
+    "safety_metrics"
+  ],
+  "properties": {
+    "event_id": {
+      "type": "string"
+    },
+    "event_timestamp": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "venue_id": {
+      "type": "string"
+    },
+    "gate_metrics": {
+      "type": "object",
+      "required": [
+        "avg_gate_wait",
+        "avg_gate_utilization",
+        "restricted_gate_ratio",
+        "queue_pressure"
+      ],
+      "properties": {
+        "avg_gate_wait": { "type": "number" },
+        "avg_gate_utilization": { "type": "number" },
+        "restricted_gate_ratio": { "type": "number" },
+        "queue_pressure": { "type": "number" }
+      }
+    },
+    "section_metrics": {
+      "type": "object",
+      "required": [
+        "avg_section_density",
+        "critical_section_ratio"
+      ],
+      "properties": {
+        "avg_section_density": { "type": "number" },
+        "critical_section_ratio": { "type": "number" }
+      }
+    },
+    "parking_metrics": {
+      "type": "object",
+      "required": [
+        "parking_utilization",
+        "net_parking_inflow"
+      ],
+      "properties": {
+        "parking_utilization": { "type": "number" },
+        "net_parking_inflow": { "type": "number" }
+      }
+    },
+    "transport_metrics": {
+      "type": "object",
+      "required": [
+        "predicted_arrival_load"
+      ],
+      "properties": {
+        "predicted_arrival_load": { "type": "number" }
+      }
+    },
+    "safety_metrics": {
+      "type": "object",
+      "required": [
+        "blocked_exit_count",
+        "safety_score"
+      ],
+      "properties": {
+        "blocked_exit_count": { "type": "integer" },
+        "safety_score": { "type": "number" }
+      }
+    },
+    "labels": {
+      "type": "object",
+      "properties": {
+        "incident_within_15m": { "type": "boolean" },
+        "peak_ingress_window": { "type": "boolean" }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}
