@@ -10,15 +10,17 @@ import {
   FiTrendingUp,
   FiActivity,
   FiHome,
+  FiCloud,
 } from 'react-icons/fi';
 import VenueOverview from './VenueOverview';
 import GateMonitor from './GateMonitor';
 import ConcessionPanel from './ConcessionPanel';
 import ParkingPanel from './ParkingPanel';
-import EmergencyPanel from './EmergencyPanel';
+import IncidentTracker from './IncidentTracker';
 import TransportHub from './TransportHub';
 import LocationBanner from './LocationBanner';
 import CrowdForecast from './CrowdForecast';
+import GcpServicesPanel from './GcpServicesPanel';
 
 export default function OperationsWorkspace({
   data,
@@ -35,9 +37,10 @@ export default function OperationsWorkspace({
       case 'gates': return <GateMonitor data={data} intelligence={intelligence} />;
       case 'concessions': return <ConcessionPanel data={data} />;
       case 'parking': return <ParkingPanel data={data} />;
-      case 'emergency': return <EmergencyPanel data={data} />;
+      case 'emergency': return <IncidentTracker data={data} intelligence={intelligence} />;
       case 'transport': return <TransportHub data={data} intelligence={intelligence} />;
       case 'forecast': return <CrowdForecast data={data} intelligence={intelligence} />;
+      case 'gcp': return <GcpServicesPanel />;
       default: return <VenueOverview data={data} aiFeed={aiFeed} intelligence={intelligence} />;
     }
   };
@@ -75,9 +78,6 @@ export default function OperationsWorkspace({
           </div>
           <button className="header-btn" onClick={() => setActiveView('emergency')}>
             <FiShield /> Safety Hub
-          </button>
-          <button className="header-btn emergency">
-            <FiBell /> Evacuate
           </button>
         </div>
       </header>
@@ -127,6 +127,13 @@ export default function OperationsWorkspace({
           <div className={`sidebar-item ${activeView === 'transport' ? 'active' : ''}`} onClick={() => setActiveView('transport')}>
             <div className="sidebar-item-icon"><FiLogOut style={{ transform: 'rotate(90deg)' }} /></div>
             <span>Transport Hub</span>
+          </div>
+
+          <div className="sidebar-section-label">Platform</div>
+
+          <div className={`sidebar-item ${activeView === 'gcp' ? 'active' : ''}`} onClick={() => setActiveView('gcp')}>
+            <div className="sidebar-item-icon"><FiCloud /></div>
+            <span>GCP Services</span>
           </div>
 
           <div style={{ flex: 1 }}></div>

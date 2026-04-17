@@ -1,23 +1,47 @@
-# Use lightweight Node image
-FROM node:20-alpine
+# =============================================================================
+# SmartVenue AI — Multi-stage Dockerfile
+# Stage 1: build the React/Vite frontend
+# Stage 2: production Node image with only runtime deps + compiled frontend
+# =============================================================================
 
-# Set working directory
-WORKDIR /usr/src/app
+# --- Stage 1: build ---
+FROM node:20-alpine AS builder
 
-# Copy dependency manifests
+WORKDIR /build
+
+# Install deps first (layer cached unless package.json changes)
 COPY package*.json ./
+RUN npm ci
 
-# Install ALL dependencies (so we can build the vite React app)
-RUN npm install
-
-# Copy application source
+# Copy source and build the Vite frontend
 COPY . .
-
-# Build the React app into dist/
 RUN npm run build
+# dist/ is now populated
 
-# Expose port (Cloud Run sets PORT env var automatically)
+# Prune to production-only deps for the runtime stage
+RUN npm ci --omit=dev
+
+# --- Stage 2: runtime ---
+FROM node:20-alpine AS runtime
+
+# Tini gives us proper PID 1 signal handling inside the container
+RUN apk add --no-cache tini
+
+WORKDIR /app
+
+# Copy only what the server needs at runtime
+COPY --from=builder /build/node_modules ./node_modules
+COPY --from=builder /build/dist         ./dist
+COPY --from=builder /build/src          ./src
+COPY --from=builder /build/server.js    ./server.js
+COPY --from=builder /build/package.json ./package.json
+
+# Cloud Run injects PORT; default to 8080
+ENV PORT=8080
+ENV NODE_ENV=production
+
 EXPOSE 8080
 
-# Run the backend server
-CMD [ "npm", "start" ]
+# Use tini as entrypoint so signals (SIGTERM) are forwarded correctly
+ENTRYPOINT ["/sbin/tini", "--"]
+CMD ["node", "server.js"]
