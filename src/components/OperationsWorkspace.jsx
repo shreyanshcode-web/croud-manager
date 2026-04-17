@@ -18,6 +18,7 @@ import ParkingPanel from './ParkingPanel';
 import EmergencyPanel from './EmergencyPanel';
 import TransportHub from './TransportHub';
 import LocationBanner from './LocationBanner';
+import CrowdForecast from './CrowdForecast';
 
 export default function OperationsWorkspace({
   data,
@@ -36,6 +37,7 @@ export default function OperationsWorkspace({
       case 'parking': return <ParkingPanel data={data} />;
       case 'emergency': return <EmergencyPanel data={data} />;
       case 'transport': return <TransportHub data={data} intelligence={intelligence} />;
+      case 'forecast': return <CrowdForecast data={data} intelligence={intelligence} />;
       default: return <VenueOverview data={data} aiFeed={aiFeed} intelligence={intelligence} />;
     }
   };
@@ -87,6 +89,12 @@ export default function OperationsWorkspace({
           <div className={`sidebar-item ${activeView === 'overview' ? 'active' : ''}`} onClick={() => setActiveView('overview')}>
             <div className="sidebar-item-icon"><FiTrendingUp /></div>
             <span>Overview Dashboard</span>
+          </div>
+
+          <div className={`sidebar-item ${activeView === 'forecast' ? 'active' : ''}`} onClick={() => setActiveView('forecast')}>
+            <div className="sidebar-item-icon"><FiActivity /></div>
+            <span>Crowd Forecast</span>
+            {intelligence?.venueScore.band === 'critical' && <span className="sidebar-item-badge red">!</span>}
           </div>
 
           <div className={`sidebar-item ${activeView === 'gates' ? 'active' : ''}`} onClick={() => setActiveView('gates')}>

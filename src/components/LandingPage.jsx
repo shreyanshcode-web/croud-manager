@@ -1,5 +1,5 @@
 import React from 'react';
-import { FiArrowRight, FiCloud, FiDatabase, FiMapPin, FiShield, FiTrendingUp } from 'react-icons/fi';
+import { FiArrowRight, FiCloud, FiDatabase, FiMapPin, FiShield, FiTrendingUp, FiActivity } from 'react-icons/fi';
 import BubbleMenu from './BubbleMenu';
 import ScrollReveal from './ScrollReveal';
 import LiquidEther from './LiquidEther';
@@ -149,7 +149,7 @@ export default function LandingPage({ goToOperations }) {
         <div className="dashboard-grid-3" style={{ marginBottom: 0 }}>
           <div className="glass-card span-2" style={{ minHeight: '420px', position: 'relative', overflow: 'hidden' }}>
             <div className="glass-card-header">
-              <div className="glass-card-title"><FiMapPinned /> Google Maps Command Context</div>
+              <div className="glass-card-title"><FiMapPin /> Google Maps Command Context</div>
               <div className="glass-card-subtitle">Maps Platform-ready operator view</div>
             </div>
             <iframe
