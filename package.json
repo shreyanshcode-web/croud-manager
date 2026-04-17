@@ -20,6 +20,7 @@
     "cors": "^2.8.6",
     "express": "^5.2.1",
     "framer-motion": "^12.38.0",
+    "google-auth-library": "^10.6.2",
     "ioredis": "^5.10.1",
     "kafkajs": "^2.2.4",
     "react": "^19.2.4",
