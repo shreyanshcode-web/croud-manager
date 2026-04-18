@@ -22,6 +22,14 @@ import { cacheGet, cacheSet, cacheDel, rateLimit, TTL, isRedisHealthy } from './
 import { publishCrowdEvent, publishLocationUpdate, isKafkaConnected } from './src/kafka-bus.js';
 import { streamCrowdEvent, ensureBigQueryTable } from './src/bigquery-stream.js';
 import { logger } from './src/cloud-logger.js';
+import { initWebSocket, broadcastCrowdUpdate, broadcastAlert } from './src/api/websocket.js';
+import { startKafkaConsumer } from './src/api/services/kafka-consumer.js';
+import crowdRoutes from './src/api/routes/crowd.routes.js';
+import simulationRoutes from './src/api/routes/simulation.routes.js';
+import alertsRoutes from './src/api/routes/alerts.routes.js';
+import zonesRoutes from './src/api/routes/zones.routes.js';
+import analyticsRoutes from './src/api/routes/analytics.routes.js';
+import trafficRoutes from './src/api/routes/traffic.routes.js';
 import dotenv from 'dotenv';
 dotenv.config();
 
@@ -109,6 +117,16 @@ function sanitiseTrafficLevel(value) {
 // Serve Vite frontend
 // ---------------------------------------------------------------------------
 app.use(express.static(path.join(__dirname, 'dist')));
+
+// ---------------------------------------------------------------------------
+// API v1 Routes (modular)
+// ---------------------------------------------------------------------------
+app.use('/api/v1/crowd', crowdRoutes);
+app.use('/api/v1/simulation', simulationRoutes);
+app.use('/api/v1/alerts', alertsRoutes);
+app.use('/api/v1/zones', zonesRoutes);
+app.use('/api/v1/analytics', analyticsRoutes);
+app.use('/api/v1/traffic', trafficRoutes);
 
 // ---------------------------------------------------------------------------
 // GET /api/health — infra status
@@ -270,10 +288,21 @@ app.get('/{*path}', (req, res) => {
 // Startup
 // ---------------------------------------------------------------------------
 const PORT = process.env.PORT || 8080;
-app.listen(PORT, async () => {
+const server = app.listen(PORT, async () => {
   logger.info(`SmartVenue AI server started`, { port: PORT, project: PROJECT_ID || 'local' });
   logger.info(`CORS origins: ${allowedOrigins.join(', ')}`);
 
+  // Initialize WebSocket
+  initWebSocket(server).catch(() => {});
+
+  // Start Kafka consumer (processes events from Kafka → Redis)
+  startKafkaConsumer().catch(() => {});
+
   // Ensure BigQuery table exists (non-blocking)
   ensureBigQueryTable().catch(() => {});
+
+  // Broadcast crowd updates every 2 seconds (fallback if Redis Pub/Sub unavailable)
+  setInterval(() => {
+    broadcastCrowdUpdate().catch(() => {});
+  }, 2000);
 });

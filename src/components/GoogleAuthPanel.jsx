@@ -82,9 +82,14 @@ export default function GoogleAuthPanel({ onContinue }) {
               </button>
             </>
           ) : (
-            <button className="header-btn" onClick={promptSignIn}>
-              <FiLogIn /> Sign In With Google
-            </button>
+            <>
+              <button className="header-btn" onClick={promptSignIn}>
+                <FiLogIn /> Sign In With Google
+              </button>
+              <button className="header-btn" onClick={onContinue}>
+                <FiShield /> Dev Bypass
+              </button>
+            </>
           )}
         </div>
       </div>

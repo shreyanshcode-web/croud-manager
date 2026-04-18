@@ -2,8 +2,10 @@ import React from 'react';
 import { FiUsers, FiClock, FiActivity, FiDollarSign, FiAlertTriangle, FiTrendingUp } from 'react-icons/fi';
 import GlassSurface from './GlassSurface';
 import LiquidEther from './LiquidEther';
+import { useUserLocation } from '../hooks/useUserLocation';
 
 export default function VenueOverview({ data, aiFeed, intelligence }) {
+  const { lat, lng } = useUserLocation();
   const { stats, sections } = data;
   const topDrivers = intelligence?.drivers.slice(0, 3) || [];
   const hotspotCards = [
@@ -196,7 +198,7 @@ export default function VenueOverview({ data, aiFeed, intelligence }) {
           </div>
           <iframe
             title="Operations map"
-            src="https://www.google.com/maps?q=Kanteerava%20Stadium%20Bengaluru&output=embed"
+            src={lat && lng ? `https://www.google.com/maps?saddr=${lat},${lng}&daddr=Kanteerava%20Stadium%20Bengaluru&output=embed` : "https://www.google.com/maps?q=Kanteerava%20Stadium%20Bengaluru&output=embed"}
             style={{ width: '100%', height: '280px', border: 0, borderRadius: '14px' }}
             loading="lazy"
             referrerPolicy="no-referrer-when-downgrade"

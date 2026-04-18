@@ -6,6 +6,7 @@ SmartVenue AI is a crowd-management dashboard for high-density events. The app s
 
 - A predictive crowd-intelligence engine scores gate pressure, section density, amenity congestion, mobility load, and safety drag.
 - The UI exposes model confidence, forecasted gate wait, predicted attendance, and explainable risk drivers instead of only showing raw telemetry.
+- A comprehensive **Operations Center** provides real-time system health monitoring, GCP service status, and incident management.
 - The repo includes a Google Cloud-first implementation path using Identity Platform, BigQuery ML, Vertex AI, Pub/Sub, Cloud Run, Firestore, Secret Manager, and Cloud Armor.
 
 ## Local development
@@ -14,6 +15,15 @@ SmartVenue AI is a crowd-management dashboard for high-density events. The app s
 npm install
 npm run dev
 ```
+
+## Pages & Features
+
+- **Landing Page** (`/`): Hero view with live crowd simulation and key metrics
+- **Dashboard** (`/dashboard`): Main command center with simulation controls and alerts
+- **Analytics** (`/analytics`): Historical data, trends, and zone-specific insights
+- **Zones** (`/zones`): Zone management and capacity configuration
+- **Settings** (`/settings`): System configuration and preferences
+- **Operations Center** (`/ops`): Real-time system health, GCP services, and incident management
 
 ## Quality checks
 
@@ -32,6 +42,8 @@ npm run test
 - `cloud/security/security_blueprint.md`: auth and security architecture notes.
 - `cloud/security/firestore.rules`: role-based Firestore rules for operators and admins.
 - `cloud/security/cloud_armor_policy.yaml`: example Cloud Armor policy for public ingress.
+- `OPERATIONS_CENTER_GUIDE.md`: comprehensive guide to the Operations Center.
+- `QUICK_START_OPERATIONS.md`: quick reference for Operations Center usage.
 
 ## Google Cloud direction
 
@@ -44,6 +56,16 @@ npm run test
 - `Identity Platform`: manage operator authentication, MFA, and claims.
 - `Secret Manager`: store API keys and service credentials securely.
 - `Cloud Armor`: protect public endpoints with WAF and rate limiting.
+
+## Operations Center
+
+The Operations Center (`/ops`) provides operators with real-time visibility into:
+
+- **System Health**: Performance metrics, resource usage, and service status
+- **GCP Services**: Status of all integrated Google Cloud services
+- **Incident Management**: Create, track, and manage operational incidents
+
+See `OPERATIONS_CENTER_GUIDE.md` for detailed documentation.
 
 ## Notes
 
