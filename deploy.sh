@@ -131,6 +131,14 @@ if [ -n "$KAFKA_USERNAME" ]; then
   create_secret_if_missing "KAFKA_PASSWORD" "$KAFKA_PASSWORD"
 fi
 
+# Google Maps API key
+if [ -z "${GOOGLE_MAPS_API_KEY:-}" ]; then
+  echo ""
+  read -rsp "   Enter your GOOGLE_MAPS_API_KEY (input hidden): " GOOGLE_MAPS_API_KEY
+  echo ""
+fi
+create_secret_if_missing "GOOGLE_MAPS_API_KEY" "$GOOGLE_MAPS_API_KEY"
+
 # ---------------------------------------------------------------------------
 # 4. Create Firestore database (Native mode, if not already created)
 # ---------------------------------------------------------------------------
@@ -176,10 +184,12 @@ done
 # ---------------------------------------------------------------------------
 # 7. Build and push the Docker image via Cloud Build
 # ---------------------------------------------------------------------------
-step "Building container image with Cloud Build"
+# Build the image, passing VITE vars for frontend compilation
 gcloud builds submit . \
   --tag="$IMAGE" \
   --project="$PROJECT_ID" \
+  --build-arg="VITE_GOOGLE_CLIENT_ID=${VITE_GOOGLE_CLIENT_ID:-}" \
+  --build-arg="VITE_GOOGLE_MAPS_API_KEY=${GOOGLE_MAPS_API_KEY:-}" \
   --quiet
 ok "Image pushed: $IMAGE"
 
