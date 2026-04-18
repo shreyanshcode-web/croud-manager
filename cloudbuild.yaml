@@ -1,0 +1,23 @@
+steps:
+  # Build the container image
+  - name: 'gcr.io/cloud-builders/docker'
+    args: [
+      'build',
+      '-t', '$_IMAGE',
+      '--build-arg', 'VITE_GOOGLE_CLIENT_ID=$_VITE_GOOGLE_CLIENT_ID',
+      '--build-arg', 'VITE_GOOGLE_MAPS_API_KEY=$_VITE_GOOGLE_MAPS_API_KEY',
+      '.'
+    ]
+
+# Push the image to Container Registry
+images:
+  - '$_IMAGE'
+
+# Define default substitutions
+substitutions:
+  _IMAGE: 'gcr.io/$PROJECT_ID/crowd-manager'
+  _VITE_GOOGLE_CLIENT_ID: ''
+  _VITE_GOOGLE_MAPS_API_KEY: ''
+
+options:
+  logging: CLOUD_LOGGING_ONLY

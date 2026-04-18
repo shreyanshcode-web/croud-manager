@@ -181,17 +181,13 @@ for TOPIC in crowd-events crowd-alerts location-updates; do
   fi
 done
 
-# ---------------------------------------------------------------------------
-# 7. Build and push the Docker image via Cloud Build
-# ---------------------------------------------------------------------------
-# Build the image, passing VITE vars for frontend compilation
+# Build the image using cloudbuild.yaml to pass build-args correctly
 gcloud builds submit . \
-  --tag="$IMAGE" \
+  --config=cloudbuild.yaml \
+  --substitutions="_IMAGE=$IMAGE,_VITE_GOOGLE_CLIENT_ID=${VITE_GOOGLE_CLIENT_ID:-},_VITE_GOOGLE_MAPS_API_KEY=${GOOGLE_MAPS_API_KEY:-}" \
   --project="$PROJECT_ID" \
-  --build-arg="VITE_GOOGLE_CLIENT_ID=${VITE_GOOGLE_CLIENT_ID:-}" \
-  --build-arg="VITE_GOOGLE_MAPS_API_KEY=${GOOGLE_MAPS_API_KEY:-}" \
   --quiet
-ok "Image pushed: $IMAGE"
+ok "Image built and pushed via Cloud Build"
 
 # ---------------------------------------------------------------------------
 # 8. Build the env-vars string for Cloud Run
