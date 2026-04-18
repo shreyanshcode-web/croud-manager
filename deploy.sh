@@ -139,6 +139,20 @@ if [ -z "${GOOGLE_MAPS_API_KEY:-}" ]; then
 fi
 create_secret_if_missing "GOOGLE_MAPS_API_KEY" "$GOOGLE_MAPS_API_KEY"
 
+# Google OAuth Client Secret
+if [ -z "${GOOGLE_CLIENT_SECRET:-}" ]; then
+  echo ""
+  read -rsp "   Enter your GOOGLE_CLIENT_SECRET (input hidden): " GOOGLE_CLIENT_SECRET
+  echo ""
+fi
+create_secret_if_missing "GOOGLE_CLIENT_SECRET" "$GOOGLE_CLIENT_SECRET"
+
+# Google OAuth Client ID (Public, for frontend build)
+if [ -z "${VITE_GOOGLE_CLIENT_ID:-}" ]; then
+  echo ""
+  read -p "   Enter your VITE_GOOGLE_CLIENT_ID: " VITE_GOOGLE_CLIENT_ID
+fi
+
 # ---------------------------------------------------------------------------
 # 4. Create Firestore database (Native mode, if not already created)
 # ---------------------------------------------------------------------------
