@@ -6,6 +6,12 @@ import { useUserLocation } from '../hooks/useUserLocation';
 
 export default function VenueOverview({ data, aiFeed, intelligence }) {
   const { lat, lng } = useUserLocation();
+  const [traffic, setTraffic] = React.useState(null);
+
+  React.useEffect(() => {
+    fetch('/api/traffic').then(r => r.json()).then(setTraffic).catch(() => {});
+  }, []);
+
   const { stats, sections } = data;
   const topDrivers = intelligence?.drivers.slice(0, 3) || [];
   const hotspotCards = [
@@ -90,6 +96,17 @@ export default function VenueOverview({ data, aiFeed, intelligence }) {
             <div className="metric-card-label">F&B Real-Time Rev</div>
             <div className="metric-card-value">${stats.totalRevenue.toLocaleString()}</div>
             <div className="metric-card-trend up">Trending Up +12%</div>
+          </div>
+        </div>
+
+        <div className="metric-card blue">
+          <div className="metric-card-icon cyan"><FiMap /></div>
+          <div className="metric-card-content">
+            <div className="metric-card-label">Avg Ingress Delay</div>
+            <div className="metric-card-value">{traffic?.avgStress ? `+${Math.round(traffic.avgStress / 5)}m` : '--'}</div>
+            <div className={`metric-card-trend ${traffic?.avgStress > 60 ? 'down' : 'up'}`}>
+              {traffic?.avgStress > 60 ? 'Severe Congestion' : 'Fluid Flow'}
+            </div>
           </div>
         </div>
       </div>
@@ -335,6 +352,13 @@ export default function VenueOverview({ data, aiFeed, intelligence }) {
                   </div>
                 </div>
               ))}
+              {traffic && (
+                <div className="queue-card" style={{ padding: '12px', border: '1px solid var(--accent-cyan)', background: 'rgba(0,224,255,0.05)' }}>
+                  <div style={{ fontSize: '11px', color: 'var(--accent-cyan)', textTransform: 'uppercase', marginBottom: '4px' }}>Maps Signal</div>
+                  <div style={{ fontSize: '13px', fontWeight: 600 }}>Ingress Stress: {traffic.avgStress}%</div>
+                  <div style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>Based on {traffic.routes.length} key transit routes</div>
+                </div>
+              )}
             </div>
           </div>
         </div>

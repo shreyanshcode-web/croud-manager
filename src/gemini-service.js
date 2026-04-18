@@ -1,17 +1,24 @@
 import { getSecret } from './gcp-secrets.js';
 
-export async function getCrowdAdvice(trafficLevel, userLocation) {
+export async function getCrowdAdvice(trafficLevel, userLocation, trafficCondition = null) {
   const apiKey = await getSecret('GEMINI_API_KEY');
   
   const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${apiKey}`;
   
+  // Enrich prompt with real-time congestion data if available
+  let trafficContext = '';
+  if (trafficCondition && trafficCondition.avgStress > 50) {
+    const jammed = trafficCondition.routes.filter(r => r.stressScore > 50).map(r => r.name).join(', ');
+    trafficContext = ` Real-time Google Maps reports heavy congestion coming from: ${jammed}.`;
+  }
+
   const response = await fetch(url, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       contents: [{
         parts: [{
-          text: `Provide short safety advice (1-2 lines) for a user navigating a crowd. Traffic level: ${trafficLevel}. User is currently at: ${userLocation}. Keep it short and actionable.`
+          text: `Provide short safety and navigation advice (max 2 lines) for a venue operator or attendee. Traffic level: ${trafficLevel}.${trafficContext} User location/context: ${userLocation}. Keep it professional, crisp and actionable. Focus on flow optimization.`
         }]
       }]
     })

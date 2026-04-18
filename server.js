@@ -30,6 +30,7 @@ import alertsRoutes from './src/api/routes/alerts.routes.js';
 import zonesRoutes from './src/api/routes/zones.routes.js';
 import analyticsRoutes from './src/api/routes/analytics.routes.js';
 import trafficRoutes from './src/api/routes/traffic.routes.js';
+import trafficSentinel from './src/services/trafficSentinel.js';
 import dotenv from 'dotenv';
 dotenv.config();
 
@@ -146,12 +147,12 @@ app.get('/api/health', (_req, res) => {
 // ---------------------------------------------------------------------------
 app.get('/api/traffic', async (_req, res) => {
   try {
-    const cached = await cacheGet('traffic:live');
-    if (cached) return res.json({ ...cached, source: 'cache' });
+    const liveTraffic = await cacheGet('traffic:live');
+    if (liveTraffic) return res.json({ ...liveTraffic, source: 'google_maps' });
 
-    const payload = { status: 'success', traffic: 'high', updatedAt: new Date().toISOString() };
-    await cacheSet('traffic:live', payload, TTL.VENUE_SNAPSHOT);
-    res.json({ ...payload, source: 'live' });
+    // Fallback if sentinel hasn't run yet
+    const payload = { status: 'success', traffic: 'nominal', updatedAt: new Date().toISOString() };
+    res.json({ ...payload, source: 'fallback' });
   } catch (err) {
     logger.error('/api/traffic error', { message: err.message });
     res.status(500).json({ error: 'Traffic service error' });
@@ -178,7 +179,8 @@ app.post('/api/advice', authMiddleware, async (req, res) => {
     const cached = await cacheGet(cacheKey);
     if (cached) return res.json({ advice: cached, source: 'cache', remainingRequests: remaining });
 
-    const advice = await getCrowdAdvice(trafficLevel, userLocation);
+    const trafficCondition = await cacheGet('traffic:live');
+    const advice = await getCrowdAdvice(trafficLevel, userLocation, trafficCondition);
     await cacheSet(cacheKey, advice, TTL.AI_ADVICE);
     res.json({ advice, source: 'gemini', remainingRequests: remaining });
   } catch (err) {
@@ -297,6 +299,9 @@ const server = app.listen(PORT, async () => {
 
   // Start Kafka consumer (processes events from Kafka → Redis)
   startKafkaConsumer().catch(() => {});
+
+  // Start Google Traffic Sentinel (polls Directions API)
+  trafficSentinel.startTrafficSentinel();
 
   // Ensure BigQuery table exists (non-blocking)
   ensureBigQueryTable().catch(() => {});

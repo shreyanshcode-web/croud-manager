@@ -21,6 +21,7 @@ import TransportHub from './TransportHub';
 import LocationBanner from './LocationBanner';
 import CrowdForecast from './CrowdForecast';
 import GcpServicesPanel from './GcpServicesPanel';
+import TrafficHUD from './TrafficHUD';
 
 export default function OperationsWorkspace({
   data,
@@ -40,6 +41,7 @@ export default function OperationsWorkspace({
       case 'emergency': return <IncidentTracker data={data} intelligence={intelligence} />;
       case 'transport': return <TransportHub data={data} intelligence={intelligence} />;
       case 'forecast': return <CrowdForecast data={data} intelligence={intelligence} />;
+      case 'traffic': return <TrafficHUD />;
       case 'gcp': return <GcpServicesPanel />;
       default: return <VenueOverview data={data} aiFeed={aiFeed} intelligence={intelligence} />;
     }
@@ -127,6 +129,12 @@ export default function OperationsWorkspace({
           <div className={`sidebar-item ${activeView === 'transport' ? 'active' : ''}`} onClick={() => setActiveView('transport')}>
             <div className="sidebar-item-icon"><FiLogOut style={{ transform: 'rotate(90deg)' }} /></div>
             <span>Transport Hub</span>
+          </div>
+
+          <div className={`sidebar-item ${activeView === 'traffic' ? 'active' : ''}`} onClick={() => setActiveView('traffic')}>
+            <div className="sidebar-item-icon"><FiMap /></div>
+            <span>Live Traffic Stress</span>
+            <span className="sidebar-item-badge cyan">LIVE</span>
           </div>
 
           <div className="sidebar-section-label">Platform</div>
