@@ -60,8 +60,8 @@ export default function OperationsWorkspace({
           </div>
           <div className="header-divider"></div>
           <div className="header-event">
-            <div className="header-event-name">{data.venue.name} - {data.venue.event}</div>
-            <div className="header-event-detail">{data.stats.totalAttendance.toLocaleString()} Fans • {data.venue.eventTime} Start</div>
+            <div className="header-event-name">{data?.venue?.name || 'SmartVenue AI'} - {data?.venue?.event || 'Live Monitor'}</div>
+            <div className="header-event-detail">{(data?.stats?.totalAttendance || 0).toLocaleString()} Fans • {data?.venue?.eventTime || '--'} Start</div>
           </div>
         </div>
 
@@ -70,9 +70,9 @@ export default function OperationsWorkspace({
             <FiHome /> Landing
           </button>
           <div className="header-status">
-            <div className={`header-status-dot ${data.stats.safetyScore < 80 ? 'red' : 'green'}`}></div>
+            <div className={`header-status-dot ${(data?.stats?.safetyScore || 100) < 80 ? 'red' : 'green'}`}></div>
             <span className="header-status-text">
-              {data.stats.safetyScore < 80 ? 'CRITICAL ALERTS' : 'SYSTEM OPTIMAL'}
+              {(data?.stats?.safetyScore || 100) < 80 ? 'CRITICAL ALERTS' : 'SYSTEM OPTIMAL'}
             </span>
           </div>
           <div className="header-clock">
@@ -102,13 +102,13 @@ export default function OperationsWorkspace({
           <div className={`sidebar-item ${activeView === 'gates' ? 'active' : ''}`} onClick={() => setActiveView('gates')}>
             <div className="sidebar-item-icon"><FiUsers /></div>
             <span>Gates & Entry</span>
-            {data.stats.avgGateWait > 10 && <span className="sidebar-item-badge amber">!</span>}
+            {(data?.stats?.avgGateWait || 0) > 10 && <span className="sidebar-item-badge amber">!</span>}
           </div>
 
           <div className={`sidebar-item ${activeView === 'concessions' ? 'active' : ''}`} onClick={() => setActiveView('concessions')}>
             <div className="sidebar-item-icon"><FiCoffee /></div>
             <span>Concessions & WC</span>
-            {data.stats.congestedConcessions > 3 && <span className="sidebar-item-badge amber">{data.stats.congestedConcessions}</span>}
+            {(data?.stats?.congestedConcessions || 0) > 3 && <span className="sidebar-item-badge amber">{data.stats.congestedConcessions}</span>}
           </div>
 
           <div className={`sidebar-item ${activeView === 'parking' ? 'active' : ''}`} onClick={() => setActiveView('parking')}>
@@ -121,7 +121,7 @@ export default function OperationsWorkspace({
           <div className={`sidebar-item ${activeView === 'emergency' ? 'active' : ''}`} onClick={() => setActiveView('emergency')}>
             <div className="sidebar-item-icon"><FiShield /></div>
             <span>Emergency Systems</span>
-            {data.stats.blockedExits > 0 && <span className="sidebar-item-badge red">{data.stats.blockedExits}</span>}
+            {(data?.stats?.blockedExits || 0) > 0 && <span className="sidebar-item-badge red">{data.stats.blockedExits}</span>}
           </div>
 
           <div className="sidebar-section-label">External Flow</div>

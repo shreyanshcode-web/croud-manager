@@ -5,7 +5,7 @@ export default function TransportHub({ data, intelligence }) {
   const { transport } = data;
   const routingAnalysis = intelligence?.arrivalPlan;
 
-  const groupedTransport = transport.reduce((accumulator, current) => {
+  const groupedTransport = (transport || []).reduce((accumulator, current) => {
     if (!accumulator[current.type]) accumulator[current.type] = [];
     accumulator[current.type].push(current);
     return accumulator;

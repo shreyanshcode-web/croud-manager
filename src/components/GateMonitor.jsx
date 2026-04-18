@@ -3,8 +3,8 @@ import { FiMaximize2, FiArrowRight } from 'react-icons/fi';
 import GlassSurface from './GlassSurface';
 
 export default function GateMonitor({ data, intelligence }) {
-  const { gates } = data;
-  const analysis = intelligence?.gatePredictions.slice(0, 3) || [];
+  const gates = data?.gates || [];
+  const analysis = intelligence?.gatePredictions?.slice(0, 3) || [];
 
   return (
     <div className="fade-in">

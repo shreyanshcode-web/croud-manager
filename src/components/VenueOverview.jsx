@@ -62,10 +62,10 @@ export default function VenueOverview({ data, aiFeed, intelligence }) {
           <div className="metric-card-content">
             <div className="metric-card-label">Total Attendance</div>
             <div className="metric-card-value">
-              {stats.totalAttendance.toLocaleString()}
+              {stats?.totalAttendance?.toLocaleString() || 0}
             </div>
-            <div className={`metric-card-trend ${stats.attendancePercent > 90 ? 'up' : 'neutral'}`}>
-              {stats.attendancePercent}% of Capacity
+            <div className={`metric-card-trend ${stats?.attendancePercent > 90 ? 'up' : 'neutral'}`}>
+              {stats?.attendancePercent || 0}% of Capacity
             </div>
           </div>
         </div>
@@ -74,8 +74,8 @@ export default function VenueOverview({ data, aiFeed, intelligence }) {
           <div className="metric-card-icon emerald"><FiClock /></div>
           <div className="metric-card-content">
             <div className="metric-card-label">Avg Gate Wait</div>
-            <div className="metric-card-value">{stats.avgGateWait} min</div>
-            <div className="metric-card-trend neutral">Across {data.gates.length} Gates</div>
+            <div className="metric-card-value">{stats?.avgGateWait || 0} min</div>
+            <div className="metric-card-trend neutral">Across {data?.gates?.length || 0} Gates</div>
           </div>
         </div>
 
@@ -83,9 +83,9 @@ export default function VenueOverview({ data, aiFeed, intelligence }) {
           <div className="metric-card-icon amber"><FiActivity /></div>
           <div className="metric-card-content">
             <div className="metric-card-label">Venue Flow Health</div>
-            <div className="metric-card-value">{stats.safetyScore}/100</div>
-            <div className={`metric-card-trend ${stats.safetyScore < 80 ? 'down' : 'up'}`}>
-              {stats.safetyScore < 80 ? 'Needs Attention' : 'Optimal'}
+            <div className="metric-card-value">{stats?.safetyScore || 0}/100</div>
+            <div className={`metric-card-trend ${(stats?.safetyScore || 0) < 80 ? 'down' : 'up'}`}>
+              {(stats?.safetyScore || 0) < 80 ? 'Needs Attention' : 'Optimal'}
             </div>
           </div>
         </div>
@@ -94,7 +94,7 @@ export default function VenueOverview({ data, aiFeed, intelligence }) {
           <div className="metric-card-icon purple"><FiDollarSign /></div>
           <div className="metric-card-content">
             <div className="metric-card-label">F&B Real-Time Rev</div>
-            <div className="metric-card-value">${stats.totalRevenue.toLocaleString()}</div>
+            <div className="metric-card-value">${stats?.totalRevenue?.toLocaleString() || 0}</div>
             <div className="metric-card-trend up">Trending Up +12%</div>
           </div>
         </div>
@@ -356,7 +356,7 @@ export default function VenueOverview({ data, aiFeed, intelligence }) {
                 <div className="queue-card" style={{ padding: '12px', border: '1px solid var(--accent-cyan)', background: 'rgba(0,224,255,0.05)' }}>
                   <div style={{ fontSize: '11px', color: 'var(--accent-cyan)', textTransform: 'uppercase', marginBottom: '4px' }}>Maps Signal</div>
                   <div style={{ fontSize: '13px', fontWeight: 600 }}>Ingress Stress: {traffic.avgStress}%</div>
-                  <div style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>Based on {traffic.routes.length} key transit routes</div>
+                  <div style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>Based on {traffic.routes?.length || 0} key transit routes</div>
                 </div>
               )}
             </div>

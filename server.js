@@ -156,7 +156,13 @@ app.get('/api/traffic', async (_req, res) => {
     if (liveTraffic) return res.json({ ...liveTraffic, source: 'google_maps' });
 
     // Fallback if sentinel hasn't run yet
-    const payload = { status: 'success', traffic: 'nominal', updatedAt: new Date().toISOString() };
+    const payload = { 
+      status: 'success', 
+      traffic: 'nominal', 
+      avgStress: 0,
+      routes: [], 
+      updatedAt: new Date().toISOString() 
+    };
     res.json({ ...payload, source: 'fallback' });
   } catch (err) {
     logger.error('/api/traffic error', { message: err.message });
