@@ -74,9 +74,14 @@ const authClient = new OAuth2Client();
 
 async function verifyGoogleToken(token) {
   try {
-    const ticket = await authClient.verifyIdToken({ idToken: token });
-    return ticket.getPayload(); // { sub, email, name, ... }
-  } catch {
+    const clientId = process.env.VITE_GOOGLE_CLIENT_ID;
+    const ticket = await authClient.verifyIdToken({
+      idToken: token,
+      audience: clientId, // Strict check
+    });
+    return ticket.getPayload();
+  } catch (err) {
+    logger.warn('Google token verification failed', { message: err.message });
     return null;
   }
 }

@@ -215,6 +215,11 @@ if [ -n "$KAFKA_BROKERS" ]; then
   ENV_VARS="${ENV_VARS},KAFKA_SSL=true"
 fi
 
+# Pass Client ID to backend for verification
+if [ -n "${VITE_GOOGLE_CLIENT_ID:-}" ]; then
+  ENV_VARS="${ENV_VARS},VITE_GOOGLE_CLIENT_ID=${VITE_GOOGLE_CLIENT_ID}"
+fi
+
 # Derive the Cloud Run service URL for CORS if not provided
 if [ -z "$ALLOWED_ORIGINS" ]; then
   ALLOWED_ORIGINS="https://${SERVICE_NAME}-$(echo "$PROJECT_NUM" | cut -c1-5)-uc.a.run.app"
@@ -232,6 +237,7 @@ gcloud run deploy "$SERVICE_NAME" \
   --allow-unauthenticated \
   --project="$PROJECT_ID" \
   --set-env-vars="$ENV_VARS" \
+  --set-secrets="GEMINI_API_KEY=GEMINI_API_KEY:latest,GOOGLE_MAPS_API_KEY=GOOGLE_MAPS_API_KEY:latest,GOOGLE_CLIENT_SECRET=GOOGLE_CLIENT_SECRET:latest" \
   --memory=512Mi \
   --cpu=1 \
   --min-instances=0 \

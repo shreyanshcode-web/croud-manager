@@ -1,5 +1,5 @@
 import React from 'react';
-import { FiUsers, FiClock, FiActivity, FiDollarSign, FiAlertTriangle, FiTrendingUp } from 'react-icons/fi';
+import { FiUsers, FiClock, FiActivity, FiDollarSign, FiAlertTriangle, FiTrendingUp, FiMap } from 'react-icons/fi';
 import GlassSurface from './GlassSurface';
 import LiquidEther from './LiquidEther';
 import { useUserLocation } from '../hooks/useUserLocation';
