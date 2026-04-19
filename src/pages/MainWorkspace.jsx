@@ -10,6 +10,7 @@ import ExitTab from '../components/ExitTab';
 import { generateVenueSnapshot, updateVenueData } from '../data/venueSimulator';
 import { buildCrowdIntelligenceSnapshot } from '../ml/crowdIntelligence';
 import { useAnalytics } from '../hooks/useAnalytics';
+import { useUserLocation } from '../hooks/useUserLocation';
 
 const TAB_SCREEN_NAMES = {
   home:     'Home',
@@ -34,6 +35,9 @@ function useIsDesktop() {
 export default function MainWorkspace() {
   const { trackScreen } = useAnalytics();
   const isDesktop = useIsDesktop();
+
+  // ─ Request location at app startup ─ permission prompt fires immediately ─
+  const userLocation = useUserLocation();
 
   const [activeTab, setActiveTab]       = useState('home');
   const [data, setData]                 = useState(null);
@@ -95,9 +99,9 @@ export default function MainWorkspace() {
     <div className="tab-content" role="region" aria-label={`${TAB_SCREEN_NAMES[activeTab]} tab content`}>
       {activeTab === 'home'     && <HomeTab      data={data} intelligence={intelligence} onTabChange={handleTabChange} />}
       {activeTab === 'ai'       && <AssistantChat data={data} intelligence={intelligence} />}
-      {activeTab === 'navigate' && <NavigateTab  data={data} />}
+      {activeTab === 'navigate' && <NavigateTab  data={data} userLocation={userLocation} />}
       {activeTab === 'food'     && <FoodTab       data={data} />}
-      {activeTab === 'exit'     && <ExitTab       data={data} />}
+      {activeTab === 'exit'     && <ExitTab       data={data} userLocation={userLocation} />}
     </div>
   );
 

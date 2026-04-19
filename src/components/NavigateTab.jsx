@@ -1,7 +1,6 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import NearbyPlaces from './NearbyPlaces';
 import VenueMap from './VenueMap';
-import { useUserLocation } from '../hooks/useUserLocation';
 import { useAnalytics } from '../hooks/useAnalytics';
 
 const VENUE_LAT = 12.9716;
@@ -48,8 +47,9 @@ const FILTERS = [
   { id: 'nearby',    label: '📍 Nearby' },
 ];
 
-export default function NavigateTab({ data }) {
-  const { lat, lng } = useUserLocation();
+export default function NavigateTab({ data, userLocation = {} }) {
+  // Location comes from MainWorkspace (requested at app startup)
+  const { lat, lng, error: locationError, loading: locationLoading, retry: retryLocation } = userLocation;
   const { trackEvent, trackScreen } = useAnalytics();
   const [activeFilter, setActiveFilter] = useState('map');
 
@@ -218,7 +218,44 @@ export default function NavigateTab({ data }) {
         {/* ── Venue Map (Google Maps JS API — live markers) ────── */}
         {activeFilter === 'map' && (
           <div role="tabpanel">
-            <p className="section-label" style={{ marginBottom: 8 }}>🗺️ Venue Map — tap any marker for live details & walking directions</p>
+            <p className="section-label" style={{ marginBottom: 8 }}>🗺️ Venue Map — tap any marker for live details &amp; walking directions</p>
+
+            {/* Location permission banner */}
+            {!lat && (
+              <div className="alert-card indigo" style={{ marginBottom: 12 }}>
+                <span className="alert-card-icon">📍</span>
+                <div className="alert-card-body" style={{ flex: 1 }}>
+                  <div className="alert-card-title">
+                    {locationLoading ? 'Requesting location…' : locationError ? 'Location unavailable' : 'Share your location'}
+                  </div>
+                  <div className="alert-card-msg">
+                    {locationError
+                      ? locationError + ' Tap Retry to try again.'
+                      : 'Enable location for your blue dot, accurate distances & directions from where you stand.'}
+                  </div>
+                </div>
+                {locationError && retryLocation && (
+                  <button
+                    className="btn btn-sm btn-ghost"
+                    onClick={retryLocation}
+                    style={{ flexShrink: 0, alignSelf: 'center' }}
+                  >
+                    Retry
+                  </button>
+                )}
+              </div>
+            )}
+
+            {lat && (
+              <div style={{
+                fontSize: 12, color: 'var(--green)', fontWeight: 600,
+                display: 'flex', gap: 6, alignItems: 'center', marginBottom: 8,
+              }}>
+                <span style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--green)', display: 'inline-block', animation: 'pulse 1.5s infinite' }} />
+                GPS active · {lat.toFixed(5)}, {lng.toFixed(5)}
+              </div>
+            )}
+
             <VenueMap data={data} userLat={lat} userLng={lng} />
 
             {/* Direct link to route from user to venue */}
