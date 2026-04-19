@@ -877,9 +877,310 @@ body {
   }
 }
 
-/* ---- Desktop centering for wider screens ------------------ */
-@media (min-width: 480px) {
-  .bottom-nav {
-    border-radius: var(--radius) var(--radius) 0 0;
+/* ====================================================================
+   DESKTOP LAYOUT — 16:9 Wide Screen (≥ 768px)
+   Mobile phone appearance is preserved below 768px.
+   On desktop: left sidebar nav + main content + right live stats panel.
+   ==================================================================== */
+
+/* ── Root: remove mobile phone centering on desktop ── */
+@media (min-width: 768px) {
+  #root {
+    max-width: 100%;
+    margin: 0;
   }
+
+  /* Full viewport 16:9-optimised shell */
+  .app-shell {
+    flex-direction: row;
+    min-height: 100dvh;
+    max-width: 1440px;
+    margin: 0 auto;
+    background: var(--bg);
+  }
+
+  /* Main scrollable area — no bottom-nav padding on desktop */
+  .tab-content {
+    padding-bottom: 0;
+    flex: 1;
+    min-width: 0;
+    overflow-y: auto;
+  }
+
+  /* On desktop the bottom nav is hidden — SideNav replaces it */
+  .bottom-nav { display: none; }
+
+  /* ── Sidebar Navigation ── */
+  .side-nav {
+    width: 220px;
+    flex-shrink: 0;
+    background: var(--bg-card);
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    padding: 24px 0 16px;
+    position: sticky;
+    top: 0;
+    height: 100dvh;
+    overflow: hidden;
+  }
+
+  .side-nav-logo {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 0 20px 24px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 16px;
+  }
+
+  .side-nav-logo-icon {
+    width: 36px;
+    height: 36px;
+    background: linear-gradient(135deg, var(--accent), #8B5CF6);
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    flex-shrink: 0;
+  }
+
+  .side-nav-logo-text {
+    font-size: 14px;
+    font-weight: 800;
+    color: var(--text-primary);
+    letter-spacing: -0.02em;
+    line-height: 1.2;
+  }
+
+  .side-nav-logo-sub {
+    font-size: 10px;
+    color: var(--text-muted);
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+
+  .side-nav-items {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 0 12px;
+  }
+
+  .side-nav-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 11px 14px;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    border: none;
+    background: transparent;
+    color: var(--text-muted);
+    font-size: 14px;
+    font-weight: 600;
+    font-family: 'Inter', sans-serif;
+    text-align: left;
+    width: 100%;
+    transition: background 0.15s, color 0.15s;
+    position: relative;
+  }
+
+  .side-nav-item:hover {
+    background: var(--bg-elevated);
+    color: var(--text-primary);
+  }
+
+  .side-nav-item.active {
+    background: var(--accent-glow);
+    color: var(--accent-light);
+  }
+
+  .side-nav-item.active::before {
+    content: '';
+    position: absolute;
+    left: -12px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 3px;
+    height: 24px;
+    background: var(--accent);
+    border-radius: 0 3px 3px 0;
+  }
+
+  .side-nav-icon {
+    font-size: 20px;
+    width: 24px;
+    text-align: center;
+    flex-shrink: 0;
+  }
+
+  .side-nav-badge {
+    margin-left: auto;
+    background: var(--red);
+    color: #fff;
+    font-size: 10px;
+    font-weight: 700;
+    padding: 1px 6px;
+    border-radius: 100px;
+    min-width: 18px;
+    text-align: center;
+  }
+
+  .side-nav-footer {
+    padding: 16px 20px 0;
+    border-top: 1px solid var(--border);
+    margin-top: 8px;
+  }
+
+  .side-nav-google-badge {
+    font-size: 10px;
+    color: var(--text-muted);
+    line-height: 1.6;
+  }
+
+  /* ── Right Stats Panel ── */
+  .stats-panel {
+    width: 280px;
+    flex-shrink: 0;
+    background: var(--bg-card);
+    border-left: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    padding: 24px 0;
+    position: sticky;
+    top: 0;
+    height: 100dvh;
+    overflow-y: auto;
+    scrollbar-width: none;
+  }
+
+  .stats-panel::-webkit-scrollbar { display: none; }
+
+  .stats-panel-title {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--text-muted);
+    padding: 0 20px 12px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 16px;
+  }
+
+  .stats-panel-section {
+    padding: 0 16px 20px;
+  }
+
+  .stats-panel-section-title {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-muted);
+    margin-bottom: 10px;
+  }
+
+  .live-metric {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 0;
+    border-bottom: 1px solid var(--border);
+    font-size: 13px;
+  }
+
+  .live-metric:last-child { border-bottom: none; }
+
+  .live-metric-label { color: var(--text-secondary); }
+
+  .live-metric-val {
+    font-weight: 700;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+  }
+
+  .live-pulse {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11px;
+    color: var(--green);
+    font-weight: 600;
+    padding: 0 20px;
+    margin-bottom: 16px;
+  }
+
+  .live-pulse-dot {
+    width: 6px;
+    height: 6px;
+    background: var(--green);
+    border-radius: 50%;
+    animation: pulse 1.5s ease-in-out infinite;
+  }
+
+  /* Widen the page content on desktop */
+  .page { padding: 24px 28px; }
+
+  .page-header { padding: 24px 28px 0; }
+
+  .page-title { font-size: 28px; }
+
+  /* Event hero gets a side-by-side layout on desktop */
+  .event-hero { padding: 28px 32px; }
+
+  .event-name { font-size: 24px; }
+
+  /* Stat row: 4 columns on desktop */
+  .stat-row { grid-template-columns: repeat(4, 1fr); gap: 12px; }
+
+  /* Chat adapts to desktop height */
+  .chat-messages {
+    height: calc(100dvh - 180px);
+    max-height: none;
+  }
+
+  /* Filter row doesn't need horizontal scroll on desktop */
+  .filter-row { flex-wrap: wrap; overflow-x: visible; }
+
+  /* Cards get hover effects on desktop */
+  .list-item  { transition: background 0.15s, border-color 0.2s; }
+  .list-item:hover { background: var(--bg-elevated); border-color: var(--border-strong); }
+  .card:hover { border-color: var(--border-strong); }
+
+  /* Quick prompts wrap on desktop */
+  .quick-prompts { flex-wrap: wrap; padding: 8px 0 0; }
+
+  /* Desktop map height */
+  .map-wrap iframe { height: 420px !important; }
+
+  /* Auth page: centered card on desktop */
+  .auth-wrap { background: var(--bg); }
+
+  /* Hover states on buttons */
+  .btn-ghost:hover { background: var(--bg-input); }
+  .btn-primary:hover { background: #5153d4; opacity: 1; }
+}
+
+/* ── Extra wide: clamp the shell for ultra-wide monitors ── */
+@media (min-width: 1440px) {
+  .app-shell { box-shadow: 0 0 80px rgba(0,0,0,0.8); }
+  body { background: #080A10; } /* slightly darker outer ring */
+}
+
+/* ── Tablet (768–1023px): hide right panel, keep sidebar ── */
+@media (min-width: 768px) and (max-width: 1023px) {
+  .stats-panel { display: none; }
+  .side-nav { width: 72px; }
+  .side-nav-logo-text, .side-nav-logo-sub { display: none; }
+  .side-nav-logo { justify-content: center; padding: 0 0 20px; }
+  .side-nav-logo-icon { width: 40px; height: 40px; }
+  .side-nav-item { justify-content: center; padding: 12px; }
+  .side-nav-item span:not(.side-nav-icon) { display: none; }
+  .side-nav-badge { position: absolute; top: 4px; right: 4px; }
+  .side-nav-google-badge { display: none; }
+  .side-nav-footer { padding: 12px 0 0; }
 }
