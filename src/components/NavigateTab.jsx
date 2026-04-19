@@ -218,8 +218,8 @@ export default function NavigateTab({ data }) {
         {/* ── Venue Map (Google Maps JS API — live markers) ────── */}
         {activeFilter === 'map' && (
           <div role="tabpanel">
-            <p className="section-label" style={{ marginBottom: 8 }}>🗺️ Venue Map — tap any marker for live details</p>
-            <VenueMap data={data} />
+            <p className="section-label" style={{ marginBottom: 8 }}>🗺️ Venue Map — tap any marker for live details & walking directions</p>
+            <VenueMap data={data} userLat={lat} userLng={lng} />
 
             {/* Direct link to route from user to venue */}
             <a

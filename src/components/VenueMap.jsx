@@ -53,6 +53,12 @@ function fillToColor(pct) {
   return '#22C55E';
 }
 
+// Build a walking directions URL — starts from user GPS if available
+function directionsUrl(destLat, destLng, userLat, userLng) {
+  const origin = userLat ? `&origin=${userLat},${userLng}` : '';
+  return `https://www.google.com/maps/dir/?api=1${origin}&destination=${destLat},${destLng}&travelmode=walking`;
+}
+
 // Build an inline SVG marker as a Data URL
 function svgMarker(emoji, bgColor, scale = 1) {
   const size = Math.round(32 * scale);
@@ -77,15 +83,17 @@ const LAYERS = [
   { id: 'parking',   label: '🅿️ Parking',    color: '#8B5CF6' },
 ];
 
-export default function VenueMap({ data }) {
+export default function VenueMap({ data, userLat, userLng }) {
   const mapRef     = useRef(null);
   const mapObjRef  = useRef(null);
   const markersRef = useRef([]);
 
   const [activeLayers, setActiveLayers] = useState(new Set(['gates', 'food', 'restrooms', 'parking']));
-  const [selectedInfo, setSelectedInfo] = useState(null); // info card content
+  const [selectedInfo, setSelectedInfo] = useState(null);
   const [mapReady, setMapReady]         = useState(false);
   const [loadError, setLoadError]       = useState(false);
+  const userMarkerRef = useRef(null);   // blue "you are here" marker
+  const accuracyCircleRef = useRef(null);
 
   // ── Load Maps JS API ────────────────────────────────────────────────────────
   useEffect(() => {
@@ -121,8 +129,13 @@ export default function VenueMap({ data }) {
   useEffect(() => {
     if (!mapReady || !mapRef.current || mapObjRef.current) return;
 
+    // Center on user if available, otherwise on venue
+    const center = userLat
+      ? { lat: userLat, lng: userLng }
+      : { lat: VENUE_LAT, lng: VENUE_LNG };
+
     const map = new window.google.maps.Map(mapRef.current, {
-      center: { lat: VENUE_LAT, lng: VENUE_LNG },
+      center,
       zoom: 16,
       mapTypeId: 'roadmap',
       disableDefaultUI: false,
@@ -157,7 +170,56 @@ export default function VenueMap({ data }) {
     mapObjRef.current = map;
   }, [mapReady, data]);
 
-  // ── Add / refresh markers when data or active layers change ─────────────────
+  // ── User location marker (blue dot) ────────────────────────────────────────
+  useEffect(() => {
+    if (!mapObjRef.current || !userLat) return;
+    const map = mapObjRef.current;
+
+    // Remove old user marker
+    if (userMarkerRef.current) userMarkerRef.current.setMap(null);
+    if (accuracyCircleRef.current) accuracyCircleRef.current.setMap(null);
+
+    // Blue pulsing "You Are Here" marker
+    const userSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24">
+      <circle cx="12" cy="12" r="10" fill="#4285F4" opacity="0.25"/>
+      <circle cx="12" cy="12" r="6" fill="#4285F4"/>
+      <circle cx="12" cy="12" r="3" fill="white"/>
+    </svg>`;
+
+    const userMarker = new window.google.maps.Marker({
+      position: { lat: userLat, lng: userLng },
+      map,
+      title: 'You are here',
+      icon: {
+        url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(userSvg),
+        anchor: new window.google.maps.Point(12, 12),
+        scaledSize: new window.google.maps.Size(24, 24),
+      },
+      zIndex: 1000,
+    });
+
+    // Accuracy radius circle (100m estimate)
+    const circle = new window.google.maps.Circle({
+      strokeColor: '#4285F4',
+      strokeOpacity: 0.4,
+      strokeWeight: 1,
+      fillColor: '#4285F4',
+      fillOpacity: 0.08,
+      map,
+      center: { lat: userLat, lng: userLng },
+      radius: 100,
+    });
+
+    userMarkerRef.current    = userMarker;
+    accuracyCircleRef.current = circle;
+
+    // Pan map to show both user and venue
+    const bounds = new window.google.maps.LatLngBounds();
+    bounds.extend({ lat: userLat, lng: userLng });
+    bounds.extend({ lat: VENUE_LAT, lng: VENUE_LNG });
+    map.fitBounds(bounds, { padding: 60 });
+  }, [mapObjRef.current, userLat, userLng]);
+
   useEffect(() => {
     if (!mapObjRef.current || !data) return;
     const map = mapObjRef.current;
@@ -192,7 +254,7 @@ export default function VenueMap({ data }) {
             { label: 'Capacity', value: `${gate.utilization}%` },
             { label: 'Status',   value: gate.status },
           ],
-          mapsUrl: `https://www.google.com/maps/dir/?api=1&destination=${coords[0]},${coords[1]}&travelmode=walking`,
+          mapsUrl: directionsUrl(coords[0], coords[1], userLat, userLng),
         }));
         markersRef.current.push(marker);
       });
@@ -220,7 +282,7 @@ export default function VenueMap({ data }) {
             { label: 'Section',   value: stand.section },
             { label: 'Try',       value: stand.popularItem },
           ],
-          mapsUrl: null,
+          mapsUrl: directionsUrl(coords[0], coords[1], userLat, userLng),
         }));
         markersRef.current.push(marker);
       });
@@ -248,7 +310,7 @@ export default function VenueMap({ data }) {
             { label: 'Wait',       value: `${room.waitMinutes} min` },
             { label: 'Cleaned',    value: room.lastCleaned },
           ],
-          mapsUrl: null,
+          mapsUrl: directionsUrl(coords[0], coords[1], userLat, userLng),
         }));
         markersRef.current.push(marker);
       });
@@ -277,12 +339,12 @@ export default function VenueMap({ data }) {
             { label: 'Total',  value: zone.totalSpots },
             { label: 'Status', value: zone.status },
           ],
-          mapsUrl: `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(zone.name + ' parking Bengaluru')}`,
+          mapsUrl: directionsUrl(coords[0], coords[1], userLat, userLng),
         }));
         markersRef.current.push(marker);
       });
     }
-  }, [mapObjRef.current, data, activeLayers]);
+  }, [mapObjRef.current, data, activeLayers, userLat, userLng]);
 
   // ── Toggle layer ────────────────────────────────────────────────────────────
   const toggleLayer = (id) => {
