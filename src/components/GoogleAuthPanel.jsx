@@ -14,8 +14,8 @@ export default function GoogleAuthPanel({ onContinue }) {
       }}
     >
       <div className="glass-card-header">
-        <div className="glass-card-title"><FiLock /> Google Authentication</div>
-        <div className="glass-card-subtitle">GIS + Identity Platform ready</div>
+        <div className="glass-card-title"><FiLock /> Operator Verification</div>
+        <div className="glass-card-subtitle">Secure Multi-Vector Credential Sync</div>
       </div>
 
       <div style={{ display: 'grid', gap: '12px' }}>
@@ -39,9 +39,9 @@ export default function GoogleAuthPanel({ onContinue }) {
           </div>
         ) : (
           <div className="queue-card">
-            <div style={{ fontWeight: 700, marginBottom: '4px' }}>Operator sign-in</div>
+            <div style={{ fontWeight: 700, marginBottom: '4px' }}>Identity Required</div>
             <div style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>
-              Authenticate operators with Google Identity Services now, and back it with Identity Platform in production for MFA, claims, and tenancy.
+              Authorized SV-Operations login required for command access. Metadata is encrypted and logged.
             </div>
           </div>
         )}
@@ -63,35 +63,22 @@ export default function GoogleAuthPanel({ onContinue }) {
           </div>
         )}
 
-        {!clientIdConfigured && (
-          <div className="alert-banner info" style={{ marginBottom: 0 }}>
-            <div className="alert-banner-text">
-              Set <strong>VITE_GOOGLE_CLIENT_ID</strong> to enable the live Google sign-in prompt.
-            </div>
-          </div>
-        )}
 
-        <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-          {user ? (
+          {!user && (
+            <button className="header-btn" onClick={promptSignIn} style={{ width: '100%', justifyContent: 'center' }}>
+              <FiLogIn /> Identity Sync Gateway
+            </button>
+          )}
+          {user && (
             <>
               <button className="header-btn" onClick={onContinue}>
-                <FiShield /> Continue To Ops
+                <FiShield /> Initialize Command Center
               </button>
               <button className="header-btn" onClick={signOut}>
-                <FiLogOut /> Sign Out
-              </button>
-            </>
-          ) : (
-            <>
-              <button className="header-btn" onClick={promptSignIn}>
-                <FiLogIn /> Sign In With Google
-              </button>
-              <button className="header-btn" onClick={onContinue}>
-                <FiShield /> Dev Bypass
+                <FiLogOut /> Termination
               </button>
             </>
           )}
-        </div>
       </div>
     </div>
   );

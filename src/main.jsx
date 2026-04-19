@@ -25,52 +25,36 @@ class ErrorBoundary extends Component {
     if (this.state.hasError) {
       return (
         <div style={{
-          background: '#0A0A0A',
-          color: '#EDEDED',
-          minHeight: '100vh',
+          background: 'var(--bg, #0C0E14)',
+          color: '#F0F2F8',
+          minHeight: '100dvh',
           display: 'flex',
           flexDirection: 'column',
           alignItems: 'center',
           justifyContent: 'center',
-          fontFamily: "'JetBrains Mono', monospace",
+          fontFamily: "'Inter', sans-serif",
           padding: '32px',
           textAlign: 'center',
         }}>
-          <div style={{ fontSize: '32px', marginBottom: '16px' }}>⚠</div>
-          <div style={{ fontSize: '14px', fontWeight: 700, color: '#FF3B3B', marginBottom: '12px', letterSpacing: '2px' }}>
-            RENDER ERROR
-          </div>
-          <div style={{
-            fontSize: '11px',
-            color: '#6B7280',
-            maxWidth: '600px',
-            marginBottom: '24px',
-            background: 'rgba(255,59,59,0.05)',
-            border: '1px solid #FF3B3B',
-            padding: '16px',
-            textAlign: 'left',
-            wordBreak: 'break-word',
-          }}>
-            {String(this.state.error)}
-          </div>
-          <div style={{ fontSize: '11px', color: '#6B7280', marginBottom: '16px' }}>
-            Open DevTools (F12) → Console for the full stack trace.
-          </div>
+          <div style={{ fontSize: 48, marginBottom: 16 }}>🤖</div>
+          <h2 style={{ fontSize: 20, fontWeight: 800, marginBottom: 8 }}>Something went wrong</h2>
+          <p style={{ fontSize: 14, color: '#9AA0B8', maxWidth: 280, marginBottom: 24, lineHeight: 1.5 }}>
+            The app hit an unexpected issue. Please try reloading.
+          </p>
           <button
             onClick={() => window.location.reload()}
             style={{
-              padding: '10px 24px',
-              background: '#00E0FF',
-              color: '#0A0A0A',
+              padding: '12px 24px',
+              background: '#6366F1',
+              color: '#fff',
               border: 'none',
-              fontFamily: "'JetBrains Mono', monospace",
-              fontSize: '12px',
-              fontWeight: 700,
+              borderRadius: 10,
+              fontSize: 14,
+              fontWeight: 600,
               cursor: 'pointer',
-              letterSpacing: '1px',
             }}
           >
-            RELOAD PAGE
+            Reload App
           </button>
         </div>
       )

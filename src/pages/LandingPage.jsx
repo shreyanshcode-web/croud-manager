@@ -1,53 +1,92 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import LiquidEther from '../components/LiquidEther';
-import GoogleAuthPanel from '../components/GoogleAuthPanel';
+import { useGoogleIdentity } from '../hooks/useGoogleIdentity';
+
+// Google logo SVG inline
+function GoogleLogo() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true">
+      <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+      <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+      <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+      <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+    </svg>
+  );
+}
 
 export default function LandingPage() {
   const navigate = useNavigate();
+  const { user, status, promptSignIn } = useGoogleIdentity();
+
+  const handleGoogleSignIn = () => promptSignIn();
+  const handleGuestAccess  = () => navigate('/workspace');
+
+  // If already signed in, redirect to workspace
+  React.useEffect(() => {
+    if (user) navigate('/workspace');
+  }, [user, navigate]);
 
   return (
-    <div style={{ position: 'relative', minHeight: '100vh', background: '#070A0F', overflow: 'hidden' }}>
-      {/* 3D Liquid Ethernet Background */}
-      <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', zIndex: 0, opacity: 0.65 }}>
-        <LiquidEther color="#00e5ff" complexity={0.8} speed={0.4} />
+    <div className="auth-wrap" role="main">
+      <div className="auth-glow" aria-hidden="true" />
+
+      {/* Logo */}
+      <div className="auth-logo" aria-hidden="true">🏟️</div>
+
+      {/* Headline */}
+      <h1 className="auth-headline">
+        Your Event<br />
+        <span style={{ color: 'var(--accent-light)' }}>Companion</span>
+      </h1>
+
+      <p className="auth-sub">
+        Real-time queues, AI-powered advice, and smart navigation — right in your pocket.
+      </p>
+
+      {/* Feature Pills */}
+      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'center', marginBottom: 32 }}>
+        {['✨ AI-powered', '🗺️ Live navigation', '🍔 Food finder', '🚗 Exit planner'].map(f => (
+          <span
+            key={f}
+            style={{
+              background: 'var(--bg-elevated)',
+              border: '1px solid var(--border)',
+              color: 'var(--text-secondary)',
+              fontSize: 12,
+              fontWeight: 600,
+              padding: '5px 12px',
+              borderRadius: '100px',
+            }}
+          >
+            {f}
+          </span>
+        ))}
       </div>
 
-      <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', display: 'flex', flexDirection: 'column', zIndex: 10 }}>
-        
-        {/* HEADER */}
-        <div style={{ padding: '24px 40px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '32px', height: '32px', background: '#00E0FF', color: '#0A0A0A', fontWeight: 900, fontSize: '18px', clipPath: 'polygon(0% 0%, 100% 0%, 85% 100%, 0% 100%)' }}>
-               SV
-            </div>
-            <div style={{ fontSize: '18px', fontWeight: 800, fontFamily: "'Space Grotesk', sans-serif", color: '#EDEDED', letterSpacing: '2px' }}>
-              SMARTVENUE <span style={{ color: '#00E0FF' }}>AI</span>
-            </div>
-          </div>
-        </div>
+      {/* Sign In Button */}
+      <button
+        className="google-btn"
+        onClick={handleGoogleSignIn}
+        aria-label="Sign in with Google"
+        disabled={status === 'loading'}
+      >
+        <GoogleLogo />
+        {status === 'loading' ? 'Connecting…' : 'Continue with Google'}
+      </button>
 
-        {/* HERO LOGIN AREA */}
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '32px' }}>
-          <div style={{ maxWidth: '600px', width: '100%', textAlign: 'center', marginBottom: '40px' }}>
-            <h1 style={{ fontSize: 'clamp(32px, 5vw, 48px)', fontWeight: 800, fontFamily: "'Space Grotesk', sans-serif", color: '#EDEDED', lineHeight: 1.1, marginBottom: '20px', textTransform: 'uppercase' }}>
-              Intelligent Crowd <br/> <span style={{ color: '#00E0FF' }}>Control Infrastructure</span>
-            </h1>
-            <p style={{ fontSize: '15px', color: '#8892B0', fontFamily: "'Inter', sans-serif", maxWidth: '500px', margin: '0 auto', lineHeight: 1.6 }}>
-              A high-performance command center for real-time venue telemetry, predictive crowd flow intelligence, and operational incident response.
-            </p>
-          </div>
+      {/* Guest Access */}
+      <button
+        className="auth-skip"
+        onClick={handleGuestAccess}
+        aria-label="Continue as guest without signing in"
+      >
+        Continue as guest
+      </button>
 
-          <div style={{ width: '100%', maxWidth: '400px' }}>
-            <GoogleAuthPanel onContinue={() => navigate('/workspace')} />
-          </div>
-        </div>
-        
-        <div style={{ padding: '24px', textAlign: 'center', color: '#8892B0', fontSize: '11px', fontFamily: "'JetBrains Mono', monospace", letterSpacing: '1px' }}>
-          SECURE OPERATIONAL GATEWAY v2.1.4 
-        </div>
-
-      </div>
+      {/* Footer note */}
+      <p style={{ marginTop: 32, fontSize: 11, color: 'var(--text-muted)', textAlign: 'center', maxWidth: 260 }}>
+        Your data is never sold. Sign-in is optional and only used to personalize your experience.
+      </p>
     </div>
   );
 }

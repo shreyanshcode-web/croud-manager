@@ -25,11 +25,9 @@ import { logger } from './src/cloud-logger.js';
 import { initWebSocket, broadcastCrowdUpdate, broadcastAlert } from './src/api/websocket.js';
 import { startKafkaConsumer } from './src/api/services/kafka-consumer.js';
 import crowdRoutes from './src/api/routes/crowd.routes.js';
-import simulationRoutes from './src/api/routes/simulation.routes.js';
-import alertsRoutes from './src/api/routes/alerts.routes.js';
-import zonesRoutes from './src/api/routes/zones.routes.js';
 import analyticsRoutes from './src/api/routes/analytics.routes.js';
 import trafficRoutes from './src/api/routes/traffic.routes.js';
+import telemetryRoutes from './src/api/routes/telemetry.routes.js';
 import trafficSentinel from './src/services/trafficSentinel.js';
 import dotenv from 'dotenv';
 dotenv.config();
@@ -128,9 +126,7 @@ app.use(express.static(path.join(__dirname, 'dist')));
 // API v1 Routes (modular)
 // ---------------------------------------------------------------------------
 app.use('/api/v1/crowd', crowdRoutes);
-app.use('/api/v1/simulation', simulationRoutes);
-app.use('/api/v1/alerts', alertsRoutes);
-app.use('/api/v1/zones', zonesRoutes);
+app.use('/api/v1/telemetry', telemetryRoutes);
 app.use('/api/v1/analytics', analyticsRoutes);
 app.use('/api/v1/traffic', trafficRoutes);
 
@@ -171,7 +167,7 @@ app.get('/api/traffic', async (_req, res) => {
 });
 
 // ---------------------------------------------------------------------------
-// POST /api/advice — Gemini AI (cached 30 s, rate-limited, input validated)
+// POST /api/advice — Gemini AI companion (cached, rate-limited, input validated)
 // ---------------------------------------------------------------------------
 app.post('/api/advice', authMiddleware, async (req, res) => {
   const userId = req.user?.sub || req.ip || 'anon';
@@ -182,17 +178,36 @@ app.post('/api/advice', authMiddleware, async (req, res) => {
   }
 
   // Validate and sanitise inputs — prevents prompt injection
-  const trafficLevel = sanitiseTrafficLevel(req.body.trafficLevel);
-  const userLocation = sanitiseString(req.body.userLocation || 'Entrance', 80);
+  const trafficLevel   = sanitiseTrafficLevel(req.body.trafficLevel);
+  const userLocation   = sanitiseString(req.body.userLocation || 'Entrance', 80);
+  const userQuery      = sanitiseString(req.body.userQuery || '', 200);
+  const systemContext  = sanitiseString(req.body.systemContext || '', 2000);
 
-  const cacheKey = `advice:${trafficLevel}:${userLocation}`;
+  // Companion mode: user asks a contextual question
+  const isCompanionMode = Boolean(userQuery && systemContext);
+  const cacheKey = isCompanionMode
+    ? `advice:companion:${userId}:${userQuery.slice(0, 60)}`
+    : `advice:${trafficLevel}:${userLocation}`;
+
   try {
-    const cached = await cacheGet(cacheKey);
-    if (cached) return res.json({ advice: cached, source: 'cache', remainingRequests: remaining });
+    // Only cache non-personalised queries (legacy mode)
+    if (!isCompanionMode) {
+      const cached = await cacheGet(cacheKey);
+      if (cached) return res.json({ advice: cached, source: 'cache', remainingRequests: remaining });
+    }
 
     const trafficCondition = await cacheGet('traffic:live');
-    const advice = await getCrowdAdvice(trafficLevel, userLocation, trafficCondition);
-    await cacheSet(cacheKey, advice, TTL.AI_ADVICE);
+    const advice = await getCrowdAdvice(
+      trafficLevel,
+      isCompanionMode ? userQuery : userLocation,
+      trafficCondition,
+      isCompanionMode ? { systemContext, userQuery } : {}
+    );
+
+    if (!isCompanionMode) {
+      await cacheSet(cacheKey, advice, TTL.AI_ADVICE);
+    }
+
     res.json({ advice, source: 'gemini', remainingRequests: remaining });
   } catch (err) {
     logger.error('/api/advice error', { message: err.message });
