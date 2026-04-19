@@ -36,6 +36,7 @@ import trafficSentinel from './src/services/trafficSentinel.js';
 import { getNearbyPlaces } from './src/services/google-places.js';
 import { translateText, SUPPORTED_LANGUAGES } from './src/services/cloud-translate.js';
 import { submitFanReport, getRecentFanReports, upvoteFanReport } from './src/services/fan-reports.js';
+import { synthesizeSpeech, TTS_LANG_MAP } from './src/services/cloud-tts.js';
 import dotenv from 'dotenv';
 dotenv.config();
 
@@ -283,6 +284,39 @@ app.post('/api/fan-reports/:id/upvote', async (req, res) => {
     res.json({ ok: true });
   } catch (err) {
     res.status(500).json({ error: 'Upvote failed' });
+  }
+});
+
+// ---------------------------------------------------------------------------
+// POST /api/tts — Google Cloud Text-to-Speech
+// Converts AI response text to WaveNet MP3 audio for read-aloud accessibility.
+// Body: { text: string, lang: string }   e.g. { text: "Head to Gate A", lang: "en" }
+// Returns: { audioContent: "<base64-mp3>" }
+// Google Service: Cloud Text-to-Speech API
+// ---------------------------------------------------------------------------
+app.post('/api/tts', async (req, res) => {
+  const userId = req.ip || 'anon';
+  const { allowed } = await rateLimit(`tts:${userId}`, 15, 60);
+  if (!allowed) return res.status(429).json({ error: 'Rate limit exceeded' });
+
+  const text = sanitiseString(req.body.text || '', 800);
+  const lang = sanitiseString(req.body.lang || 'en', 5);
+  if (!text) return res.status(400).json({ error: 'text is required' });
+
+  const languageCode = TTS_LANG_MAP[lang] || 'en-IN';
+  const cacheKey = `tts:${languageCode}:${text.slice(0, 40)}`;
+
+  try {
+    const cached = await cacheGet(cacheKey);
+    if (cached) return res.json({ audioContent: cached, source: 'cache' });
+
+    const audioContent = await synthesizeSpeech(text, languageCode);
+    await cacheSet(cacheKey, audioContent, 300); // cache 5 min — same text same voice
+    logger.info('/api/tts synthesized', { lang: languageCode, chars: text.length });
+    res.json({ audioContent, source: 'google_tts' });
+  } catch (err) {
+    logger.error('/api/tts error', { message: err.message });
+    res.status(500).json({ error: 'Text-to-speech unavailable' });
   }
 });
 

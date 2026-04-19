@@ -1,0 +1,44 @@
+{
+  "name": "SV-Companion — Event Assistant",
+  "short_name": "SV-Companion",
+  "description": "AI-powered live event companion. Find shortest queues, navigate, plan your exit.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0C0E14",
+  "theme_color": "#6366F1",
+  "orientation": "portrait-primary",
+  "lang": "en",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["entertainment", "navigation", "utilities"],
+  "screenshots": [],
+  "shortcuts": [
+    {
+      "name": "AI Assistant",
+      "short_name": "AI Help",
+      "description": "Ask the AI companion a question",
+      "url": "/?tab=ai",
+      "icons": [{ "src": "/favicon.svg", "sizes": "any" }]
+    },
+    {
+      "name": "Find Food",
+      "short_name": "Food",
+      "description": "See shortest food queues",
+      "url": "/?tab=food",
+      "icons": [{ "src": "/favicon.svg", "sizes": "any" }]
+    },
+    {
+      "name": "Plan Exit",
+      "short_name": "Exit",
+      "description": "Beat-the-rush exit planning",
+      "url": "/?tab=exit",
+      "icons": [{ "src": "/favicon.svg", "sizes": "any" }]
+    }
+  ]
+}

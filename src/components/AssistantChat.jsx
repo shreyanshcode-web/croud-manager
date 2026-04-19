@@ -23,6 +23,13 @@ const SUPPORTED_LANGUAGES = {
   ja: '🇯🇵 Japanese',
 };
 
+// Web Speech API voice code map
+const SPEECH_LANG_MAP = {
+  en: 'en-IN', hi: 'hi-IN', ta: 'ta-IN', te: 'te-IN',
+  kn: 'kn-IN', fr: 'fr-FR', es: 'es-ES', de: 'de-DE',
+  ar: 'ar-SA', zh: 'zh-CN', ja: 'ja-JP',
+};
+
 function buildContext(data, intelligence) {
   if (!data) return '';
   const { stats, gates, concessions, transport } = data;
@@ -36,48 +43,105 @@ LIVE VENUE DATA (${new Date().toLocaleTimeString()}):
 - Avg gate wait: ${stats.avgGateWait}min | Avg food queue: ${stats.avgConcessionWait}min
 - Parking: ${stats.parkingUtilization}% full
 
-GATES (shortest wait first):
-${sortedGates.slice(0, 4).map(g => `  - ${g.name}: ${g.waitMinutes.toFixed(1)}min, ${g.status}`).join('\n')}
-
-FOOD (shortest wait first):
-${sortedFood.slice(0, 4).map(c => `  - ${c.name}: ${c.avgWaitMinutes.toFixed(1)}min`).join('\n')}
-
-NEXT TRANSPORT:
-${nextTransit.map(t => `  - ${t.line}: ${t.eta}min`).join('\n')}
-${intelligence?.venueScore?.summary ? `\nVENUE AI NOTE: ${intelligence.venueScore.summary}` : ''}
+GATES (shortest first): ${sortedGates.slice(0, 4).map(g => `${g.name}: ${g.waitMinutes.toFixed(1)}min`).join(', ')}
+FOOD (shortest first):  ${sortedFood.slice(0, 4).map(c => `${c.name}: ${c.avgWaitMinutes.toFixed(1)}min`).join(', ')}
+TRANSPORT: ${nextTransit.map(t => `${t.line}: ${t.eta}min`).join(', ')}
+${intelligence?.venueScore?.summary ? `AI NOTE: ${intelligence.venueScore.summary}` : ''}
   `.trim();
 }
 
 function buildSystemPrompt(ctx) {
-  return `You are SV-Companion, a friendly AI assistant for live event fans at Apex Arena. Give short (2-4 sentences), practical, specific answers using the live data below. Be friendly, use 1-2 relevant emojis, and ALWAYS name specific gates or stands.\n\n${ctx}`;
+  return `You are SV-Companion, a friendly AI assistant for live event fans. Give short (2-4 sentences), practical, specific answers using the live data below. Be friendly, use 1-2 emojis, and ALWAYS name specific gates or stands.\n\n${ctx}`;
 }
 
 export default function AssistantChat({ data, intelligence }) {
   const { trackEvent, trackSearch, trackScreen } = useAnalytics();
 
-  const [messages, setMessages] = useState([
-    {
-      id: 'intro',
-      role: 'ai',
-      text: "Hey! 👋 I'm your AI companion for today's event. Ask me about queues, exits, food, or anything else. What can I help with?",
-      original: null,
-    },
-  ]);
-  const [input, setInput]         = useState('');
-  const [loading, setLoading]     = useState(false);
-  const [lang, setLang]           = useState('en');
-  const [showLang, setShowLang]   = useState(false);
-  const [translating, setTranslating] = useState(null); // message id being translated
-  const bottomRef = useRef(null);
+  const [messages, setMessages]     = useState([{
+    id: 'intro', role: 'ai',
+    text: "Hey! 👋 I'm your AI companion. Ask me about queues, exits, food, or anything else. Tap 🎤 to speak!",
+    original: null,
+  }]);
+  const [input, setInput]           = useState('');
+  const [loading, setLoading]       = useState(false);
+  const [lang, setLang]             = useState('en');
+  const [showLang, setShowLang]     = useState(false);
+  const [listening, setListening]   = useState(false);  // Voice input state
+  const [playingId, setPlayingId]   = useState(null);   // TTS playback state
+  const [translating, setTranslating] = useState(null);
+  const bottomRef  = useRef(null);
+  const recognizer = useRef(null);
+  const audioRef   = useRef(null);
 
-  useEffect(() => {
-    trackScreen('AI Chat');
-  }, []);
+  useEffect(() => { trackScreen('AI Chat'); }, []);
+  useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages, loading]);
 
-  useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages, loading]);
+  // ── Voice Input (Web Speech API) ──────────────────────────────────────────
+  const startListening = useCallback(() => {
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SR) return alert('Voice input not supported in this browser.');
 
+    const rec = new SR();
+    rec.lang = SPEECH_LANG_MAP[lang] || 'en-IN';
+    rec.continuous = false;
+    rec.interimResults = false;
+
+    rec.onresult = (e) => {
+      const transcript = e.results[0][0].transcript;
+      setInput(transcript);
+      setListening(false);
+      trackEvent('voice_input_used', { lang });
+    };
+    rec.onerror = () => setListening(false);
+    rec.onend   = () => setListening(false);
+
+    recognizer.current = rec;
+    rec.start();
+    setListening(true);
+    trackEvent('voice_input_started', { lang });
+  }, [lang]);
+
+  const stopListening = () => {
+    recognizer.current?.stop();
+    setListening(false);
+  };
+
+  // ── Read Aloud (Google Cloud TTS) ─────────────────────────────────────────
+  const readAloud = useCallback(async (msgId, text) => {
+    if (playingId === msgId) {
+      // Stop if already playing
+      audioRef.current?.pause();
+      setPlayingId(null);
+      return;
+    }
+    setPlayingId(msgId);
+    trackEvent('tts_read_aloud', { lang });
+    try {
+      const res = await fetch('/api/tts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text, lang }),
+      });
+      if (!res.ok) throw new Error('TTS error');
+      const { audioContent } = await res.json();
+
+      // Decode base64 MP3 and play
+      const binary    = atob(audioContent);
+      const bytes     = new Uint8Array(binary.length);
+      binary.split('').forEach((c, i) => { bytes[i] = c.charCodeAt(0); });
+      const blob      = new Blob([bytes], { type: 'audio/mpeg' });
+      const url       = URL.createObjectURL(blob);
+      const audio     = new Audio(url);
+      audioRef.current = audio;
+      audio.onended = () => { setPlayingId(null); URL.revokeObjectURL(url); };
+      audio.onerror = () => setPlayingId(null);
+      audio.play();
+    } catch {
+      setPlayingId(null);
+    }
+  }, [playingId, lang]);
+
+  // ── Send Message ──────────────────────────────────────────────────────────
   const sendMessage = useCallback(async (text) => {
     const trimmed = (text || input).trim();
     if (!trimmed || loading) return;
@@ -85,15 +149,12 @@ export default function AssistantChat({ data, intelligence }) {
     trackSearch(trimmed);
     trackEvent('ai_query_sent', { query_length: trimmed.length, language: lang });
 
-    const userMsg = { id: Date.now(), role: 'user', text: trimmed, original: null };
-    setMessages(prev => [...prev, userMsg]);
+    setMessages(prev => [...prev, { id: Date.now(), role: 'user', text: trimmed, original: null }]);
     setInput('');
     setLoading(true);
 
     try {
-      const venueContext  = buildContext(data, intelligence);
-      const systemContext = buildSystemPrompt(venueContext);
-
+      const systemContext = buildSystemPrompt(buildContext(data, intelligence));
       const res = await fetch('/api/advice', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -111,48 +172,44 @@ export default function AssistantChat({ data, intelligence }) {
         aiText = json.advice || aiText;
       }
 
-      // Auto-translate if non-English is selected
-      let translatedText = aiText;
+      // Auto-translate if non-English selected (Cloud Translation API)
+      let displayText = aiText;
       if (lang !== 'en') {
         try {
           const tr = await fetch('/api/translate', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ text: aiText, targetLang: lang }),
           });
           if (tr.ok) {
             const trData = await tr.json();
-            translatedText = trData.translatedText || aiText;
+            displayText = trData.translatedText || aiText;
           }
         } catch {}
       }
 
+      const newId = Date.now() + 1;
       setMessages(prev => [...prev, {
-        id:       Date.now() + 1,
-        role:     'ai',
-        text:     translatedText,
+        id: newId, role: 'ai',
+        text: displayText,
         original: lang !== 'en' ? aiText : null,
       }]);
     } catch {
       setMessages(prev => [...prev, {
-        id:       Date.now() + 1,
-        role:     'ai',
-        text:     "I'm having trouble connecting. Check your network 📶",
-        original: null,
+        id: Date.now() + 1, role: 'ai',
+        text: "I'm having trouble connecting. Check your network 📶", original: null,
       }]);
     } finally {
       setLoading(false);
     }
   }, [input, loading, data, intelligence, lang]);
 
-  // Translate a single past message on demand
+  // Translate single message on demand
   const translateMessage = async (msgId, text) => {
     if (lang === 'en') return;
     setTranslating(msgId);
     try {
       const res = await fetch('/api/translate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ text, targetLang: lang }),
       });
       if (res.ok) {
@@ -162,16 +219,24 @@ export default function AssistantChat({ data, intelligence }) {
         ));
         trackEvent('message_translated', { target_lang: lang });
       }
-    } finally {
-      setTranslating(null);
-    }
+    } finally { setTranslating(null); }
   };
 
   const handleKey = (e) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      sendMessage();
-    }
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
+  };
+
+  // Share an AI message via Web Share API
+  const shareMessage = async (text) => {
+    if (!navigator.share) return;
+    try {
+      await navigator.share({
+        title: 'SV-Companion Tip',
+        text: `📍 Venue tip from AI: ${text}`,
+        url: window.location.href,
+      });
+      trackEvent('message_shared');
+    } catch {}
   };
 
   return (
@@ -182,50 +247,47 @@ export default function AssistantChat({ data, intelligence }) {
           <div>
             <h2 className="fw-800 fs-18">AI Companion</h2>
             <p className="fs-12 text-muted">
-              Powered by <span style={{ color: '#4285F4', fontWeight: 700 }}>Gemini</span>
-              {lang !== 'en' && <span> · {SUPPORTED_LANGUAGES[lang]}</span>}
+              <span style={{ color: '#4285F4', fontWeight: 700 }}>Gemini</span>
+              {' · '}
+              <span style={{ color: '#0F9D58', fontWeight: 700 }}>TTS</span>
+              {' · '}
+              <span style={{ color: '#DB4437', fontWeight: 700 }}>Translate</span>
+              {lang !== 'en' && <span style={{ color: 'var(--accent-light)' }}> · {SUPPORTED_LANGUAGES[lang]}</span>}
             </p>
           </div>
 
           <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-            {/* Language Selector — Cloud Translation API */}
+            {/* Language Selector */}
             <div style={{ position: 'relative' }}>
               <button
                 className="btn btn-sm btn-ghost"
                 onClick={() => setShowLang(v => !v)}
-                aria-label="Change response language"
-                title="Change language (Cloud Translation API)"
+                aria-label="Change language"
               >
                 🌐 {lang.toUpperCase()}
               </button>
               {showLang && (
                 <div style={{
                   position: 'absolute', right: 0, top: '110%',
-                  background: 'var(--bg-elevated)',
-                  border: '1px solid var(--border-strong)',
-                  borderRadius: 12,
-                  zIndex: 50,
-                  minWidth: 180,
-                  overflow: 'hidden',
+                  background: 'var(--bg-elevated)', border: '1px solid var(--border-strong)',
+                  borderRadius: 12, zIndex: 50, minWidth: 180, overflow: 'hidden',
                   boxShadow: '0 8px 32px rgba(0,0,0,0.5)',
                 }}>
                   {Object.entries(SUPPORTED_LANGUAGES).map(([code, label]) => (
                     <button
                       key={code}
                       style={{
-                        display: 'block',
-                        width: '100%',
-                        textAlign: 'left',
+                        display: 'block', width: '100%', textAlign: 'left',
                         padding: '10px 16px',
                         background: lang === code ? 'var(--accent-glow)' : 'transparent',
                         color: lang === code ? 'var(--accent-light)' : 'var(--text-primary)',
-                        border: 'none',
-                        fontSize: 13,
-                        fontWeight: lang === code ? 700 : 400,
-                        cursor: 'pointer',
-                        fontFamily: 'Inter, sans-serif',
+                        border: 'none', fontSize: 13, fontWeight: lang === code ? 700 : 400,
+                        cursor: 'pointer', fontFamily: 'Inter, sans-serif',
                       }}
-                      onClick={() => { setLang(code); setShowLang(false); trackEvent('language_changed', { language: code }); }}
+                      onClick={() => {
+                        setLang(code); setShowLang(false);
+                        trackEvent('language_changed', { language: code });
+                      }}
                     >
                       {label}
                     </button>
@@ -243,16 +305,9 @@ export default function AssistantChat({ data, intelligence }) {
         </div>
 
         {/* Quick Prompts */}
-        <div className="quick-prompts" style={{ marginTop: 8 }} role="list">
+        <div className="quick-prompts" style={{ marginTop: 8 }}>
           {QUICK_PROMPTS.map(p => (
-            <button
-              key={p}
-              className="quick-prompt-chip"
-              onClick={() => sendMessage(p)}
-              role="listitem"
-            >
-              {p}
-            </button>
+            <button key={p} className="quick-prompt-chip" onClick={() => sendMessage(p)}>{p}</button>
           ))}
         </div>
       </div>
@@ -267,31 +322,58 @@ export default function AssistantChat({ data, intelligence }) {
             <div style={{ display: 'flex', flexDirection: 'column', gap: 4, maxWidth: '80%' }}>
               <div className={`chat-bubble ${msg.role}`}>{msg.text}</div>
 
-              {/* Show original English if translated */}
-              {msg.role === 'ai' && msg.original && (
+              {msg.original && (
                 <div style={{ fontSize: 11, color: 'var(--text-muted)', paddingLeft: 4 }}>
-                  <em>Original: {msg.original.slice(0, 80)}{msg.original.length > 80 ? '…' : ''}</em>
+                  <em>EN: {msg.original.slice(0, 70)}{msg.original.length > 70 ? '…' : ''}</em>
                 </div>
               )}
 
-              {/* Translate button for messages in English */}
-              {msg.role === 'ai' && lang !== 'en' && !msg.original && (
-                <button
-                  style={{
-                    alignSelf: 'flex-start',
-                    fontSize: 11,
-                    color: 'var(--accent-light)',
-                    background: 'none',
-                    border: 'none',
-                    cursor: 'pointer',
-                    padding: '2px 4px',
-                    fontFamily: 'Inter, sans-serif',
-                  }}
-                  onClick={() => translateMessage(msg.id, msg.text)}
-                  disabled={translating === msg.id}
-                >
-                  {translating === msg.id ? '⏳ Translating…' : `🌐 Translate to ${SUPPORTED_LANGUAGES[lang]}`}
-                </button>
+              {/* AI message action buttons */}
+              {msg.role === 'ai' && msg.id !== 'intro' && (
+                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', paddingLeft: 2 }}>
+                  {/* Read Aloud — Google Cloud TTS */}
+                  <button
+                    style={{
+                      fontSize: 11, color: playingId === msg.id ? 'var(--green)' : 'var(--text-muted)',
+                      background: 'none', border: 'none', cursor: 'pointer',
+                      padding: '2px 4px', fontFamily: 'Inter, sans-serif',
+                    }}
+                    onClick={() => readAloud(msg.id, msg.text)}
+                    aria-label={playingId === msg.id ? 'Stop reading' : 'Read aloud (Google TTS)'}
+                  >
+                    {playingId === msg.id ? '⏹ Stop' : '🔊 Read aloud'}
+                  </button>
+
+                  {/* Share via Web Share API */}
+                  {navigator.share && (
+                    <button
+                      style={{
+                        fontSize: 11, color: 'var(--text-muted)',
+                        background: 'none', border: 'none', cursor: 'pointer',
+                        padding: '2px 4px', fontFamily: 'Inter, sans-serif',
+                      }}
+                      onClick={() => shareMessage(msg.text)}
+                      aria-label="Share this tip"
+                    >
+                      📤 Share
+                    </button>
+                  )}
+
+                  {/* Translate on demand */}
+                  {lang !== 'en' && !msg.original && (
+                    <button
+                      style={{
+                        fontSize: 11, color: 'var(--accent-light)',
+                        background: 'none', border: 'none', cursor: 'pointer',
+                        padding: '2px 4px', fontFamily: 'Inter, sans-serif',
+                      }}
+                      onClick={() => translateMessage(msg.id, msg.text)}
+                      disabled={translating === msg.id}
+                    >
+                      {translating === msg.id ? '⏳' : `🌐 Translate`}
+                    </button>
+                  )}
+                </div>
               )}
             </div>
           </div>
@@ -301,9 +383,7 @@ export default function AssistantChat({ data, intelligence }) {
           <div className="chat-msg ai" aria-live="polite">
             <div className="chat-avatar" aria-hidden="true">✨</div>
             <div className="chat-bubble ai">
-              <div className="chat-typing" aria-hidden="true">
-                <span /><span /><span />
-              </div>
+              <div className="chat-typing" aria-hidden="true"><span /><span /><span /></div>
             </div>
           </div>
         )}
@@ -312,16 +392,33 @@ export default function AssistantChat({ data, intelligence }) {
 
       {/* Input Bar */}
       <div className="chat-input-bar">
+        {/* 🎤 Voice Input — Web Speech API */}
+        <button
+          className="chat-send"
+          style={{
+            background: listening ? 'var(--red)' : 'var(--bg-elevated)',
+            border: '1px solid var(--border-strong)',
+            width: 44, height: 44, flexShrink: 0,
+            animation: listening ? 'pulse 1s ease-in-out infinite' : 'none',
+          }}
+          onClick={listening ? stopListening : startListening}
+          aria-label={listening ? 'Stop listening' : 'Start voice input'}
+          title="Voice input (Web Speech API)"
+        >
+          {listening ? '⏹' : '🎤'}
+        </button>
+
         <textarea
           className="chat-input"
-          placeholder={lang === 'en' ? 'Ask about queues, exits, food…' : 'Ask anything — reply auto-translated'}
+          placeholder={listening ? '🎤 Listening…' : lang === 'en' ? 'Ask about queues, exits, food…' : 'Ask anything — auto-translated'}
           value={input}
           onChange={e => setInput(e.target.value)}
           onKeyDown={handleKey}
           rows={1}
-          aria-label="Type your message"
-          disabled={loading}
+          aria-label="Type or speak your message"
+          disabled={loading || listening}
         />
+
         <button
           className="chat-send"
           onClick={() => sendMessage()}
