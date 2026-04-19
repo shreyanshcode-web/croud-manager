@@ -1,5 +1,6 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import NearbyPlaces from './NearbyPlaces';
+import VenueMap from './VenueMap';
 import { useUserLocation } from '../hooks/useUserLocation';
 import { useAnalytics } from '../hooks/useAnalytics';
 
@@ -40,17 +41,17 @@ const GATE_COORDS = {
 };
 
 const FILTERS = [
+  { id: 'map',       label: '🗺️ Venue Map' },
   { id: 'gates',     label: '🚪 Gates' },
   { id: 'restrooms', label: '🚻 Restrooms' },
   { id: 'parking',   label: '🚗 Parking' },
   { id: 'nearby',    label: '📍 Nearby' },
-  { id: 'map',       label: '🗺️ Map' },
 ];
 
 export default function NavigateTab({ data }) {
   const { lat, lng } = useUserLocation();
   const { trackEvent, trackScreen } = useAnalytics();
-  const [activeFilter, setActiveFilter] = useState('gates');
+  const [activeFilter, setActiveFilter] = useState('map');
 
   useEffect(() => { trackScreen('Navigate'); }, []);
 
@@ -214,53 +215,34 @@ export default function NavigateTab({ data }) {
           </div>
         )}
 
-        {/* ── Map (Google Maps Embed) ──────────────────────────── */}
+        {/* ── Venue Map (Google Maps JS API — live markers) ────── */}
         {activeFilter === 'map' && (
           <div role="tabpanel">
-            <p className="section-label">🗺️ Venue Map — Google Maps</p>
-            <div className="map-wrap">
-              <iframe
-                title="Venue location map"
-                src={
-                  lat && lng
-                    ? `https://www.google.com/maps?saddr=${lat},${lng}&daddr=${VENUE_LAT},${VENUE_LNG}&output=embed`
-                    : `https://www.google.com/maps?q=Kanteerava+Stadium+Bengaluru&output=embed`
-                }
-                style={{ height: 320 }}
-                loading="lazy"
-                referrerPolicy="no-referrer-when-downgrade"
-                allowFullScreen
-              />
-            </div>
+            <p className="section-label" style={{ marginBottom: 8 }}>🗺️ Venue Map — tap any marker for live details</p>
+            <VenueMap data={data} />
 
-            {/* Direct Maps link */}
+            {/* Direct link to route from user to venue */}
             <a
               href={`https://www.google.com/maps/dir/?api=1&destination=${VENUE_LAT},${VENUE_LNG}&travelmode=walking`}
               target="_blank"
               rel="noopener noreferrer"
               className="btn btn-ghost btn-full"
-              style={{ textDecoration: 'none', display: 'flex', marginTop: 4 }}
+              style={{ textDecoration: 'none', display: 'flex', marginTop: 8 }}
               aria-label="Get walking directions to venue in Google Maps"
               onClick={() => trackEvent('venue_directions_opened')}
             >
-              🗺️ Get Walking Directions
+              🗺️ Get Walking Directions to Venue
             </a>
 
-            <div className="alert-card indigo" style={{ marginTop: 0 }}>
-              <span className="alert-card-icon">📍</span>
-              <div className="alert-card-body">
-                <div className="alert-card-title">Your Location</div>
-                <div className="alert-card-msg">
-                  {lat && lng
-                    ? `GPS detected: ${lat.toFixed(4)}, ${lng.toFixed(4)}`
-                    : 'Enable location for personalized directions.'}
+            {lat && lng && (
+              <div className="alert-card indigo">
+                <span className="alert-card-icon">📍</span>
+                <div className="alert-card-body">
+                  <div className="alert-card-title">GPS Active</div>
+                  <div className="alert-card-msg">{lat.toFixed(5)}, {lng.toFixed(5)} — markers show your distance</div>
                 </div>
               </div>
-            </div>
-
-            <div style={{ fontSize: 10, color: 'var(--text-muted)', textAlign: 'right' }}>
-              Powered by <span style={{ color: '#4285F4', fontWeight: 700 }}>Google</span> Maps Platform
-            </div>
+            )}
           </div>
         )}
       </div>
