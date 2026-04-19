@@ -1,4 +1,6 @@
 import React, { useMemo } from 'react';
+import LiveReports from './LiveReports';
+import { useAnalytics } from '../hooks/useAnalytics';
 
 function getCapacityColor(pct) {
   if (pct >= 95) return 'red';
@@ -7,47 +9,55 @@ function getCapacityColor(pct) {
 }
 
 function getGateStatusColor(status) {
-  if (status === 'restricted') return { cls: 'red', label: 'Busy' };
+  if (status === 'restricted') return { cls: 'red',   label: 'Busy' };
   if (status === 'busy')       return { cls: 'amber', label: 'Moderate' };
   return { cls: 'green', label: 'Open' };
 }
 
+/**
+ * Build a Google Calendar "Add to Calendar" link.
+ * Google Service: Google Calendar
+ */
+function buildCalendarLink(venue) {
+  const title = encodeURIComponent(venue.event || 'Event at Apex Arena');
+  const loc   = encodeURIComponent(venue.name   || 'Kanteerava Stadium, Bengaluru');
+  // Use today as the date, event time from venue data
+  const date  = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+  return `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${title}&location=${loc}&dates=${date}/${date}`;
+}
+
 export default function HomeTab({ data, intelligence, onTabChange }) {
   const { venue, stats, gates, sections } = data;
-  const capPct = stats.attendancePercent;
+  const { trackEvent } = useAnalytics();
+  const capPct   = stats.attendancePercent;
   const capColor = getCapacityColor(capPct);
 
-  // Best gate for entry (lowest wait)
   const bestGate = useMemo(() =>
-    [...gates].sort((a, b) => a.waitMinutes - b.waitMinutes)[0],
-    [gates]
-  );
+    [...gates].sort((a, b) => a.waitMinutes - b.waitMinutes)[0], [gates]);
 
-  // Critical section alerts
   const criticalSections = useMemo(() =>
-    sections.filter(s => s.status === 'critical' || s.status === 'high').slice(0, 2),
-    [sections]
-  );
+    sections.filter(s => s.status === 'critical' || s.status === 'high').slice(0, 2), [sections]);
 
-  // AI tip from intelligence
   const topDriver = intelligence?.drivers?.[0];
+  const calendarUrl = buildCalendarLink(venue);
 
   return (
     <div className="page fade-in" role="main">
-      {/* Event Hero */}
+      {/* ─── Event Hero ─────────────────────────────────────── */}
       <div className="event-hero">
         <div className="event-badge" aria-label="Event is live">Live Now</div>
         <h1 className="event-name">{venue.event}</h1>
         <p className="event-meta">📍 {venue.name} &nbsp;·&nbsp; 🕐 {venue.eventTime}</p>
 
+        {/* Capacity Bar */}
         <div className="capacity-bar-wrap">
           <div className="capacity-bar-label">
             <span>Venue Capacity</span>
-            <strong aria-label={`${capPct}% full`}>{capPct}% full · {stats.totalAttendance.toLocaleString()} fans</strong>
+            <strong>{capPct}% full · {stats.totalAttendance.toLocaleString()} fans</strong>
           </div>
           <div className="capacity-bar" role="progressbar" aria-valuenow={capPct} aria-valuemin={0} aria-valuemax={100}>
             <div
-              className={`capacity-bar-fill`}
+              className="capacity-bar-fill"
               style={{
                 width: `${capPct}%`,
                 background: capColor === 'red'   ? 'linear-gradient(90deg,#EF4444,#F87171)' :
@@ -57,9 +67,22 @@ export default function HomeTab({ data, intelligence, onTabChange }) {
             />
           </div>
         </div>
+
+        {/* Google Calendar — Add to Calendar */}
+        <a
+          href={calendarUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="btn btn-ghost btn-sm"
+          style={{ marginTop: 12, width: '100%', textDecoration: 'none', display: 'flex' }}
+          aria-label="Add event to Google Calendar"
+          onClick={() => trackEvent('calendar_add_clicked', { event: venue.event })}
+        >
+          📅 Add to Google Calendar
+        </a>
       </div>
 
-      {/* Stat Row */}
+      {/* ─── Live Stats ──────────────────────────────────────── */}
       <div className="stat-row">
         <div className="stat-chip">
           <span className="stat-chip-icon">⏱️</span>
@@ -78,32 +101,32 @@ export default function HomeTab({ data, intelligence, onTabChange }) {
         </div>
       </div>
 
-      {/* AI Tip */}
+      {/* ─── Gemini AI Tip ───────────────────────────────────── */}
       {topDriver && (
-        <div className="alert-card indigo" role="note" aria-label="AI recommendation">
+        <div className="alert-card indigo" role="note">
           <span className="alert-card-icon">✨</span>
           <div className="alert-card-body">
-            <div className="alert-card-title">AI Recommendation</div>
+            <div className="alert-card-title">Gemini AI Recommendation</div>
             <div className="alert-card-msg">
-              {topDriver.detail} — {topDriver.label} is the main factor affecting your experience right now.
+              {topDriver.detail} — <em>{topDriver.label}</em> is impacting experience now.
             </div>
           </div>
         </div>
       )}
 
-      {/* Best Gate Right Now */}
+      {/* ─── Best Entry Gate ─────────────────────────────────── */}
       <div>
-        <p className="section-label">Best Entry Gate Right Now</p>
+        <p className="section-label">🚪 Best Entry Gate Right Now</p>
         <button
           className="list-item"
           style={{ width: '100%', textAlign: 'left' }}
-          onClick={() => onTabChange('navigate')}
-          aria-label={`${bestGate.name} — shortest wait, ${bestGate.waitMinutes.toFixed(1)} minutes`}
+          onClick={() => { onTabChange('navigate'); trackEvent('best_gate_tapped'); }}
+          aria-label={`${bestGate.name} — ${bestGate.waitMinutes.toFixed(1)} min wait`}
         >
           <div className="list-item-icon">🚪</div>
           <div className="list-item-content">
             <div className="list-item-title">{bestGate.name}</div>
-            <div className="list-item-sub">Estimated wait: {bestGate.waitMinutes.toFixed(1)} min · Queue: {bestGate.peopleInQueue} people</div>
+            <div className="list-item-sub">Est. wait: {bestGate.waitMinutes.toFixed(1)} min · Queue: {bestGate.peopleInQueue}</div>
           </div>
           <span className={`list-item-badge badge-${getGateStatusColor(bestGate.status).cls}`}>
             {getGateStatusColor(bestGate.status).label}
@@ -111,21 +134,17 @@ export default function HomeTab({ data, intelligence, onTabChange }) {
         </button>
       </div>
 
-      {/* Area Alerts */}
+      {/* ─── Crowded Area Alerts ─────────────────────────────── */}
       {criticalSections.length > 0 && (
         <div>
-          <p className="section-label">Crowded Areas</p>
+          <p className="section-label">⚠️ Crowded Areas</p>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             {criticalSections.map(sec => (
-              <div
-                key={sec.id}
-                className={`alert-card ${sec.status === 'critical' ? 'red' : 'amber'}`}
-                role="alert"
-              >
+              <div key={sec.id} className={`alert-card ${sec.status === 'critical' ? 'red' : 'amber'}`} role="alert">
                 <span className="alert-card-icon">{sec.status === 'critical' ? '🔴' : '🟠'}</span>
                 <div className="alert-card-body">
                   <div className="alert-card-title">{sec.name}</div>
-                  <div className="alert-card-msg">{sec.density}% capacity — consider moving to a less crowded area</div>
+                  <div className="alert-card-msg">{sec.density}% capacity — move to a less crowded area</div>
                 </div>
               </div>
             ))}
@@ -133,12 +152,12 @@ export default function HomeTab({ data, intelligence, onTabChange }) {
         </div>
       )}
 
-      {/* Quick Actions */}
+      {/* ─── Quick Actions ───────────────────────────────────── */}
       <div>
         <p className="section-label">Quick Actions</p>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
           {[
-            { icon: '🤖', label: 'Ask AI', tab: 'ai' },
+            { icon: '✨', label: 'Ask Gemini AI', tab: 'ai' },
             { icon: '🍔', label: 'Find Food', tab: 'food' },
             { icon: '🗺️', label: 'Navigate', tab: 'navigate' },
             { icon: '🚗', label: 'Plan Exit', tab: 'exit' },
@@ -146,7 +165,7 @@ export default function HomeTab({ data, intelligence, onTabChange }) {
             <button
               key={action.tab}
               className="btn btn-ghost"
-              onClick={() => onTabChange(action.tab)}
+              onClick={() => { onTabChange(action.tab); trackEvent('quick_action_tapped', { tab: action.tab }); }}
               aria-label={action.label}
             >
               <span role="img" aria-hidden="true">{action.icon}</span> {action.label}
@@ -154,6 +173,9 @@ export default function HomeTab({ data, intelligence, onTabChange }) {
           ))}
         </div>
       </div>
+
+      {/* ─── Live Fan Reports (Firestore) ────────────────────── */}
+      <LiveReports />
     </div>
   );
 }

@@ -7,10 +7,18 @@ import FoodTab from '../components/FoodTab';
 import ExitTab from '../components/ExitTab';
 import { generateVenueSnapshot, updateVenueData } from '../data/venueSimulator';
 import { buildCrowdIntelligenceSnapshot } from '../ml/crowdIntelligence';
-import { useNavigate } from 'react-router-dom';
+import { useAnalytics } from '../hooks/useAnalytics';
+
+const TAB_SCREEN_NAMES = {
+  home:     'Home',
+  ai:       'AI Chat',
+  navigate: 'Navigate',
+  food:     'Food & Drinks',
+  exit:     'Exit Planner',
+};
 
 export default function MainWorkspace() {
-  const navigate = useNavigate();
+  const { trackScreen } = useAnalytics();
   const [activeTab, setActiveTab]       = useState('home');
   const [data, setData]                 = useState(null);
   const [intelligence, setIntelligence] = useState(null);
@@ -33,6 +41,12 @@ export default function MainWorkspace() {
     return () => clearInterval(interval);
   }, []);
 
+  // Track screen view on every tab switch — Google Analytics 4
+  const handleTabChange = (tab) => {
+    setActiveTab(tab);
+    trackScreen(TAB_SCREEN_NAMES[tab] || tab);
+  };
+
   // Loading screen
   if (!data) {
     return (
@@ -53,11 +67,7 @@ export default function MainWorkspace() {
         <p style={{ color: 'var(--accent-light)', fontWeight: 700, fontSize: 16 }}>
           Loading Event Data…
         </p>
-        <div
-          className="skeleton"
-          style={{ width: 200, height: 6, borderRadius: 100 }}
-          aria-hidden="true"
-        />
+        <div className="skeleton" style={{ width: 200, height: 6, borderRadius: 100 }} aria-hidden="true" />
       </div>
     );
   }
@@ -65,22 +75,16 @@ export default function MainWorkspace() {
   const alertCount = data.stats.activeAlerts;
 
   return (
-    <div className="app-shell" role="application" aria-label="Event Companion">
-      {/* Tab Content — renders whichever tab is active */}
-      <div
-        className="tab-content"
-        role="region"
-        aria-label={`${activeTab} tab`}
-      >
-        {activeTab === 'home'     && <HomeTab      data={data} intelligence={intelligence} onTabChange={setActiveTab} />}
+    <div className="app-shell" role="application" aria-label="SV-Companion — Event Assistant">
+      <div className="tab-content" role="region" aria-label={`${TAB_SCREEN_NAMES[activeTab]} tab content`}>
+        {activeTab === 'home'     && <HomeTab      data={data} intelligence={intelligence} onTabChange={handleTabChange} />}
         {activeTab === 'ai'       && <AssistantChat data={data} intelligence={intelligence} />}
         {activeTab === 'navigate' && <NavigateTab  data={data} />}
         {activeTab === 'food'     && <FoodTab       data={data} />}
         {activeTab === 'exit'     && <ExitTab       data={data} />}
       </div>
 
-      {/* Fixed Bottom Nav */}
-      <BottomNav active={activeTab} onChange={setActiveTab} alertCount={alertCount} />
+      <BottomNav active={activeTab} onChange={handleTabChange} alertCount={alertCount} />
     </div>
   );
 }

@@ -1,14 +1,18 @@
 /**
- * SmartVenue AI — Express Server
+ * SV-Companion — Express Server
  * Runs on Cloud Run. Serves the React SPA and all API routes.
  *
- * Security hardening applied:
- *  - CORS restricted to ALLOWED_ORIGINS env var
- *  - All inputs validated and sanitised before use
- *  - Google ID token verification on write endpoints
- *  - Rate limiting via Redis sliding window
- *  - Structured JSON logging via Cloud Logging
- *  - No hardcoded project IDs or credentials
+ * Google Services integrated:
+ *  - Gemini 1.5 Flash         → /api/advice  (AI companion)
+ *  - Google Places API        → /api/nearby  (search around venue)
+ *  - Cloud Translation API    → /api/translate (multi-language AI)
+ *  - Google Maps Directions   → /api/traffic  (transit telemetry)
+ *  - Firestore                → /api/fan-reports (live crowd tips)
+ *  - BigQuery                 → stream crowd events for analytics
+ *  - Cloud Logging            → structured JSON audit logs
+ *  - Secret Manager           → runtime API key retrieval
+ *  - Google Identity Services → OAuth2 token verification
+ *  - Cloud Run                → serverless hosting
  */
 import express from 'express';
 import cors from 'cors';
@@ -29,6 +33,9 @@ import analyticsRoutes from './src/api/routes/analytics.routes.js';
 import trafficRoutes from './src/api/routes/traffic.routes.js';
 import telemetryRoutes from './src/api/routes/telemetry.routes.js';
 import trafficSentinel from './src/services/trafficSentinel.js';
+import { getNearbyPlaces } from './src/services/google-places.js';
+import { translateText, SUPPORTED_LANGUAGES } from './src/services/cloud-translate.js';
+import { submitFanReport, getRecentFanReports, upvoteFanReport } from './src/services/fan-reports.js';
 import dotenv from 'dotenv';
 dotenv.config();
 
@@ -146,23 +153,136 @@ app.get('/api/health', (_req, res) => {
 // ---------------------------------------------------------------------------
 // GET /api/traffic — live traffic (Redis-cached 3 s)
 // ---------------------------------------------------------------------------
+// GET /api/traffic — live transit telemetry (Google Maps Directions API)
+// ---------------------------------------------------------------------------
 app.get('/api/traffic', async (_req, res) => {
   try {
     const liveTraffic = await cacheGet('traffic:live');
     if (liveTraffic) return res.json({ ...liveTraffic, source: 'google_maps' });
 
-    // Fallback if sentinel hasn't run yet
-    const payload = { 
-      status: 'success', 
-      traffic: 'nominal', 
+    const payload = {
+      status: 'success',
+      traffic: 'nominal',
       avgStress: 0,
-      routes: [], 
-      updatedAt: new Date().toISOString() 
+      routes: [],
+      updatedAt: new Date().toISOString()
     };
     res.json({ ...payload, source: 'fallback' });
   } catch (err) {
     logger.error('/api/traffic error', { message: err.message });
     res.status(500).json({ error: 'Traffic service error' });
+  }
+});
+
+// ---------------------------------------------------------------------------
+// GET /api/nearby — Google Places API (nearby parking, food, transit, hospital)
+// Query params: ?category=parking|food|transit|hospital&radius=1000
+// ---------------------------------------------------------------------------
+app.get('/api/nearby', async (req, res) => {
+  const userId = req.ip || 'anon';
+  const { allowed } = await rateLimit(`nearby:${userId}`, 30, 60);
+  if (!allowed) return res.status(429).json({ error: 'Rate limit exceeded' });
+
+  const validCategories = ['parking', 'food', 'transit', 'hospital', 'pharmacy'];
+  const category = validCategories.includes(req.query.category) ? req.query.category : 'parking';
+  const radius   = Math.min(parseInt(req.query.radius) || 1000, 5000);
+
+  const cacheKey = `places:${category}:${radius}`;
+  try {
+    const cached = await cacheGet(cacheKey);
+    if (cached) return res.json({ places: cached, source: 'cache', category });
+
+    const places = await getNearbyPlaces(category, radius);
+    await cacheSet(cacheKey, places, TTL.AI_ADVICE); // cache 30s
+    logger.info('/api/nearby', { category, count: places.length });
+    res.json({ places, source: 'google_places', category });
+  } catch (err) {
+    logger.error('/api/nearby error', { message: err.message });
+    res.status(500).json({ error: 'Places service unavailable', places: [] });
+  }
+});
+
+// ---------------------------------------------------------------------------
+// POST /api/translate — Google Cloud Translation API
+// Body: { text: string, targetLang: string }
+// ---------------------------------------------------------------------------
+app.post('/api/translate', async (req, res) => {
+  const userId = req.ip || 'anon';
+  const { allowed } = await rateLimit(`translate:${userId}`, 30, 60);
+  if (!allowed) return res.status(429).json({ error: 'Rate limit exceeded' });
+
+  const text       = sanitiseString(req.body.text || '', 500);
+  const targetLang = sanitiseString(req.body.targetLang || 'en', 5);
+
+  if (!text) return res.status(400).json({ error: 'text is required' });
+
+  const cacheKey = `translate:${targetLang}:${text.slice(0, 40)}`;
+  try {
+    const cached = await cacheGet(cacheKey);
+    if (cached) return res.json({ ...cached, source: 'cache' });
+
+    const result = await translateText(text, targetLang);
+    await cacheSet(cacheKey, result, 300); // cache 5 min
+    logger.info('/api/translate', { targetLang, length: text.length });
+    res.json({ ...result, source: 'cloud_translation', languages: SUPPORTED_LANGUAGES });
+  } catch (err) {
+    logger.error('/api/translate error', { message: err.message });
+    res.status(500).json({ error: 'Translation unavailable', translatedText: text });
+  }
+});
+
+// ---------------------------------------------------------------------------
+// GET  /api/fan-reports — Read live Firestore crowd reports
+// POST /api/fan-reports — Submit a crowd report (rate-limited)
+// POST /api/fan-reports/:id/upvote — Upvote a report
+// ---------------------------------------------------------------------------
+app.get('/api/fan-reports', async (_req, res) => {
+  try {
+    const cached = await cacheGet('fan-reports:recent');
+    if (cached) return res.json({ reports: cached, source: 'cache' });
+
+    const reports = await getRecentFanReports();
+    await cacheSet('fan-reports:recent', reports, 15); // 15 s cache
+    res.json({ reports, source: 'firestore' });
+  } catch (err) {
+    logger.error('/api/fan-reports GET error', { message: err.message });
+    res.status(500).json({ reports: [], error: 'Reports unavailable' });
+  }
+});
+
+app.post('/api/fan-reports', async (req, res) => {
+  const userId = req.user?.sub || req.ip || 'anon';
+  const { allowed } = await rateLimit(`fanreport:${userId}`, 5, 60); // 5/min max
+  if (!allowed) return res.status(429).json({ error: 'Too many reports. Try again in a minute.' });
+
+  const location = sanitiseString(req.body.location || 'Venue', 80);
+  const type     = ['crowded','blocked','incident','clean','tip'].includes(req.body.type)
+    ? req.body.type : 'tip';
+  const message  = sanitiseString(req.body.message || '', 200);
+
+  if (!message) return res.status(400).json({ error: 'message is required' });
+
+  try {
+    const id = await submitFanReport({ location, type, message, userId });
+    await cacheDel('fan-reports:recent'); // invalidate cache
+    logger.info('fan-report submitted', { type, location });
+    res.json({ ok: true, id });
+  } catch (err) {
+    logger.error('/api/fan-reports POST error', { message: err.message });
+    res.status(500).json({ error: 'Could not save report' });
+  }
+});
+
+app.post('/api/fan-reports/:id/upvote', async (req, res) => {
+  const reportId = sanitiseString(req.params.id, 64);
+  if (!reportId) return res.status(400).json({ error: 'Invalid report id' });
+
+  try {
+    await upvoteFanReport(reportId);
+    await cacheDel('fan-reports:recent');
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(500).json({ error: 'Upvote failed' });
   }
 });
 
