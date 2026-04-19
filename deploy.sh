@@ -1,6 +1,6 @@
 #!/bin/bash
 # =============================================================================
-# SmartVenue AI — GCP Deployment Script
+# SV-Companion — GCP Deployment Script
 # =============================================================================
 # Prerequisites:
 #   1. gcloud CLI installed and authenticated  →  gcloud auth login
@@ -65,6 +65,10 @@ gcloud services enable \
   identitytoolkit.googleapis.com \
   containerregistry.googleapis.com \
   artifactregistry.googleapis.com \
+  translate.googleapis.com \
+  texttospeech.googleapis.com \
+  places-backend.googleapis.com \
+  analyticsadmin.googleapis.com \
   --project="$PROJECT_ID" \
   --quiet
 ok "APIs enabled"
@@ -147,10 +151,33 @@ if [ -z "${GOOGLE_CLIENT_SECRET:-}" ]; then
 fi
 create_secret_if_missing "GOOGLE_CLIENT_SECRET" "$GOOGLE_CLIENT_SECRET"
 
+# Google Cloud Translation API key
+if [ -z "${GOOGLE_TRANSLATE_API_KEY:-}" ]; then
+  echo ""
+  read -rsp "   Enter your GOOGLE_TRANSLATE_API_KEY (input hidden): " GOOGLE_TRANSLATE_API_KEY
+  echo ""
+fi
+create_secret_if_missing "GOOGLE_TRANSLATE_API_KEY" "$GOOGLE_TRANSLATE_API_KEY"
+
+# Google Cloud Text-to-Speech API key
+if [ -z "${GOOGLE_TTS_API_KEY:-}" ]; then
+  echo ""
+  read -rsp "   Enter your GOOGLE_TTS_API_KEY (input hidden): " GOOGLE_TTS_API_KEY
+  echo ""
+fi
+create_secret_if_missing "GOOGLE_TTS_API_KEY" "$GOOGLE_TTS_API_KEY"
+
+# Google Analytics 4 Measurement ID (not sensitive — but stored consistently)
+if [ -z "${VITE_GA_MEASUREMENT_ID:-}" ]; then
+  echo ""
+  read -rp "   Enter your VITE_GA_MEASUREMENT_ID (e.g. G-XXXXXXXXXX): " VITE_GA_MEASUREMENT_ID
+fi
+create_secret_if_missing "GA_MEASUREMENT_ID" "${VITE_GA_MEASUREMENT_ID}"
+
 # Google OAuth Client ID (Public, for frontend build)
 if [ -z "${VITE_GOOGLE_CLIENT_ID:-}" ]; then
   echo ""
-  read -p "   Enter your VITE_GOOGLE_CLIENT_ID: " VITE_GOOGLE_CLIENT_ID
+  read -rp "   Enter your VITE_GOOGLE_CLIENT_ID: " VITE_GOOGLE_CLIENT_ID
 fi
 
 # ---------------------------------------------------------------------------
@@ -237,7 +264,13 @@ gcloud run deploy "$SERVICE_NAME" \
   --allow-unauthenticated \
   --project="$PROJECT_ID" \
   --set-env-vars="$ENV_VARS" \
-  --set-secrets="GEMINI_API_KEY=GEMINI_API_KEY:latest,GOOGLE_MAPS_API_KEY=GOOGLE_MAPS_API_KEY:latest,GOOGLE_CLIENT_SECRET=GOOGLE_CLIENT_SECRET:latest" \
+  --set-secrets="\
+GEMINI_API_KEY=GEMINI_API_KEY:latest,\
+GOOGLE_MAPS_API_KEY=GOOGLE_MAPS_API_KEY:latest,\
+GOOGLE_CLIENT_SECRET=GOOGLE_CLIENT_SECRET:latest,\
+GOOGLE_TRANSLATE_API_KEY=GOOGLE_TRANSLATE_API_KEY:latest,\
+GOOGLE_TTS_API_KEY=GOOGLE_TTS_API_KEY:latest,\
+VITE_GA_MEASUREMENT_ID=GA_MEASUREMENT_ID:latest" \
   --memory=512Mi \
   --cpu=1 \
   --min-instances=0 \
@@ -269,17 +302,24 @@ ok "CORS origin set to $SERVICE_URL"
 # ---------------------------------------------------------------------------
 echo ""
 echo "============================================================"
-echo "  ✅  SmartVenue AI deployed successfully!"
+echo "  ✅  SV-Companion deployed successfully!"
 echo "  🌐  URL : $SERVICE_URL"
 echo "  📊  Logs: https://console.cloud.google.com/logs?project=$PROJECT_ID"
 echo "  🔧  Run : https://console.cloud.google.com/run?project=$PROJECT_ID"
+echo "  🔑  Keys: https://console.cloud.google.com/security/secret-manager?project=$PROJECT_ID"
 echo "============================================================"
 echo ""
+echo "  Secrets stored securely in Secret Manager (never in code):"
+echo "    GEMINI_API_KEY           → Gemini AI companion"
+echo "    GOOGLE_MAPS_API_KEY      → Maps, Directions, Places APIs"
+echo "    GOOGLE_CLIENT_SECRET     → OAuth 2.0 verification"
+echo "    GOOGLE_TRANSLATE_API_KEY → Cloud Translation (11 languages)"
+echo "    GOOGLE_TTS_API_KEY       → Cloud Text-to-Speech (WaveNet)"
+echo "    GA_MEASUREMENT_ID        → Google Analytics 4"
+echo ""
 echo "  Next steps:"
-echo "  1. Open $SERVICE_URL and sign in"
-echo "  2. Set VITE_GOOGLE_CLIENT_ID in .env and rebuild if using Google Auth"
-echo "  3. Add a Redis URL (Memorystore or Upstash) to REDIS_URL env var"
-echo "  4. Add Kafka creds (Confluent Cloud) to KAFKA_BROKERS env var"
-echo "  5. Visit Cloud Logging to see structured logs:"
+echo "  1. Open $SERVICE_URL and verify the app loads"
+echo "  2. Test AI chat, voice input, read-aloud, and translate"
+echo "  3. Check Cloud Logging for structured API logs:"
 echo "     https://console.cloud.google.com/logs?project=$PROJECT_ID"
 echo ""
