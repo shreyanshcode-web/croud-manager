@@ -6,6 +6,7 @@ steps:
       '-t', '$_IMAGE',
       '--build-arg', 'VITE_GOOGLE_CLIENT_ID=$_VITE_GOOGLE_CLIENT_ID',
       '--build-arg', 'VITE_GOOGLE_MAPS_API_KEY=$_VITE_GOOGLE_MAPS_API_KEY',
+      '--build-arg', 'VITE_GA_MEASUREMENT_ID=$_VITE_GA_MEASUREMENT_ID',
       '.'
     ]
 
@@ -18,6 +19,7 @@ substitutions:
   _IMAGE: 'gcr.io/$PROJECT_ID/crowd-manager'
   _VITE_GOOGLE_CLIENT_ID: ''
   _VITE_GOOGLE_MAPS_API_KEY: ''
+  _VITE_GA_MEASUREMENT_ID: ''
 
 options:
   logging: CLOUD_LOGGING_ONLY

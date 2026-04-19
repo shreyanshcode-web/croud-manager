@@ -15,8 +15,8 @@ export async function getSecret(secretName) {
   const cached = secretCache.get(secretName);
   if (cached && Date.now() < cached.expiresAt) return cached.value;
 
-  // Local dev shortcut — read from process.env before hitting Secret Manager
-  if (process.env.NODE_ENV !== 'production' && process.env[secretName]) {
+  // Cloud Run injects these directly via --set-secrets, so we can check process.env first
+  if (process.env[secretName]) {
     return process.env[secretName];
   }
 

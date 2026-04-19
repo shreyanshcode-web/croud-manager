@@ -225,7 +225,7 @@ done
 # Build the image using cloudbuild.yaml to pass build-args correctly
 gcloud builds submit . \
   --config=cloudbuild.yaml \
-  --substitutions="_IMAGE=$IMAGE,_VITE_GOOGLE_CLIENT_ID=${VITE_GOOGLE_CLIENT_ID:-},_VITE_GOOGLE_MAPS_API_KEY=${GOOGLE_MAPS_API_KEY:-}" \
+  --substitutions="_IMAGE=$IMAGE,_VITE_GOOGLE_CLIENT_ID=${VITE_GOOGLE_CLIENT_ID:-},_VITE_GOOGLE_MAPS_API_KEY=${GOOGLE_MAPS_API_KEY:-},_VITE_GA_MEASUREMENT_ID=${VITE_GA_MEASUREMENT_ID:-}" \
   --project="$PROJECT_ID" \
   --quiet
 ok "Image built and pushed via Cloud Build"
